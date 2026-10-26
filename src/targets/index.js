@@ -45,6 +45,8 @@ export function makeTarget(cfg, { fetchImpl = fetch, env = process.env, mock = f
     id: cfg.id,
     label: cfg.label ?? cfg.id,
     price: mock ? { input: 0, output: 0 } : cfg.price ?? { input: 0, output: 0 },
+    keyEnv: KEY_ENV[spec.vendor] ?? null,
+    ready: spec.vendor === 'mock' || Boolean(key),
     async chat(req) {
       if (spec.vendor !== 'mock' && !key) throw new Error(`Set ${KEY_ENV[spec.vendor]} to use target ${cfg.id}`);
       const t0 = Date.now();

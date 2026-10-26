@@ -118,6 +118,8 @@ async function main(argv) {
     return;
   }
   const plan = loadPlan(args);
+  const missing = [...new Set([...plan.targets, plan.user, plan.judge].filter((t) => !t.ready).map((t) => t.keyEnv))];
+  if (missing.length && cmd === 'run') throw new Error(`Missing API key: set ${missing.join(' and ')} (in the environment or a .env file), or use --mock.`);
   const est = estimateFor(plan);
   const budget = new Budget({ runCapUsd: plan.runCapUsd, dailyCapUsd: plan.dailyCapUsd, dailyFile: plan.mock ? null : resolve('results') });
   console.log(`${plan.suite.title}: ${plan.mode} mode, ${plan.cases.length} case(s) × ${plan.repeats} repeat(s) × ${plan.turns} turns`);
