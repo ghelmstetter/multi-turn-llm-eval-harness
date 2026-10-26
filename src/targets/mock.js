@@ -31,7 +31,7 @@ function mockUser({ messages }) {
 
 function mockRubric({ messages, criteria = [], assistantLabel = 'ASSISTANT' }) {
   const prompt = lastUser(messages);
-  const tutorTurns = prompt.split('\n').filter((l) => l.startsWith(`${assistantLabel}: `));
+  const tutorTurns = prompt.split(/\r?\n/).filter((l) => l.startsWith(`${assistantLabel}: `));
   const avg = tutorTurns.reduce((s, t) => s + words(t), 0) / Math.max(1, tutorTurns.length);
   const short = avg <= 25;
   const scores = Object.fromEntries(criteria.map((c) => [c.id, { score: c.id === 'turn_length' ? (short ? 5 : 2) : short ? 4 : 3, why: `mock judge: average reply ${avg.toFixed(0)} words` }]));

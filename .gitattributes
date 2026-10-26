@@ -1,0 +1,5 @@
+# Keep line endings as LF on every machine, so data files read the same on Windows.
+* text=auto eol=lf
+*.gz binary
+*.db binary
+*.png binary

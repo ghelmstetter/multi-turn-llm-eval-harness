@@ -91,7 +91,7 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 14 tests, no keys needed
+npm test        # 15 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
