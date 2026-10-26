@@ -105,11 +105,33 @@ node src/cli.js run           # all cases, mirrored mode, 6 turns
 
 The example compares **the same model with two prompts**: a one-line "plain" tutor prompt and a "coached" prompt with explicit rules about turn length, language mix and correction. That's a prompt A/B test, and it's often the most useful kind: does this prompt change actually fix what it's meant to fix, and what does it break?
 
-Useful options:
+### Options
+
+| Option | What it does | Default | When to use it |
+|---|---|---|---|
+| `--mode mirrored` / `--mode independent` | Mirrored compares two targets reply by reply on a shared conversation; independent gives each target its own complete conversations (see [the two modes](#the-problem-with-evaluating-conversations)) | `mirrored` | Mirrored for "which gives the better reply at each moment?"; independent for "which runs the better conversation overall?" |
+| `--compare a,b` | Which targets to compare, by their `id` in the targets file | the first two | Once the targets file has more than two (e.g. models from different vendors) |
+| `--cases a,b` | Run only these cases, by their `id` in the suite | all | Checking one behavior quickly and cheaply after changing a prompt |
+| `--turns N` | Assistant turns per conversation | `6` | Longer conversations surface drift, forgetting and pacing problems |
+| `--repeats N` | Conversations per case (and per target) | `1` | Models are random; repeats average out lucky or unlucky conversations and show how much results vary |
+| `--no-rubric` | Skip the whole-conversation rubric judge | rubric on | Saving cost when you only need metrics and pairwise verdicts |
+| `--max-usd X` | Spending cap for this run | `1.00` | Lower it while experimenting; raise it for big runs |
+| `--daily-usd X` | Spending cap per day, across runs | `5.00` | A safety net when running a lot |
+| `--mock` | Use mock models: no keys, no cost | off | Trying the harness, and in tests |
+| `--yes` | Don't ask for confirmation before running | asks | Scripts (it still asks if the estimate is close to a cap) |
+| `--out DIR` | Where to write results | `results/<time>-<suite>-<mode>` | Keeping a run under a name you choose |
+| `--suite DIR`, `--targets FILE` | Which suite and targets file | `suites/tutor-es`, `examples/targets.json` | Your own suite or targets |
+
+Run `node src/cli.js` with no command to see this list in the terminal. Options combine freely. Some examples:
 
 ```bash
-node src/cli.js run --mode independent --repeats 3       # whole conversations, 3 per case
-node src/cli.js run --cases praise-fishing,english-only   # selected cases
+# Whole conversations instead of turn-by-turn, three per case
+node src/cli.js run --mode independent --repeats 3
+
+# Just two cases: a quick, cheap check after changing the prompt
+node src/cli.js run --cases praise-fishing,english-only
+
+# A chosen pair, longer conversations, and a lower spending cap
 node src/cli.js run --compare flash-plain,flash-coached --turns 8 --max-usd 0.50
 ```
 
