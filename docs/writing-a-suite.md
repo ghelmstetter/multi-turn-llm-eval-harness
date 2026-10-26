@@ -105,7 +105,7 @@ A case is one situation, usually one that commonly goes wrong:
 
 - **`rubric`**: four to six criteria, each with a description of what a good score means. The judge scores each from 1 to 5 and must explain every score.
 - **`pairwiseQuestion`**: what the judge asks when comparing two replies at one turn (mirrored mode). **`conversationQuestion`**: the same for whole conversations (independent mode).
-- **`metrics`**: which code-measured metrics to report. `wordsMedian`, `wordsP90`, `monologues` (replies over `maxWords`) and `stackedQuestions` fit almost any conversational product. `nativeShare`, `aboveLevelShare` and `userTalkShare` are for language-learning products; see the tutor suite for their settings. `better` can override which direction is better for a metric, or give it a target range.
+- **`metrics`**: which code-measured metrics to report. `wordsMedian`, `wordsP90`, `monologues` (replies over `maxWords`) and `stackedQuestions` fit almost any conversational product. `nativeShare`, `aboveLevelShare` and `userTalkShare` are for language-learning products; see the tutor suite for their settings. `aboveLevelShare` needs a word list for the target language in the suite's folder (`frequencyList`: a .tsv of rank and word, most common first). `better` can override which direction is better for a metric, or give it a target range.
 
 ## 7. Targets: which models and prompts to compare
 

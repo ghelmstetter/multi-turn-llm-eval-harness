@@ -1,7 +1,6 @@
 // Code-measured graders: cheap, deterministic, run on every conversation before any judge.
 // They catch what LLM judges are bad at noticing consistently (length, language mix, level).
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 const tokens = (t) => String(t ?? '').toLowerCase().match(/\p{L}+(?:'\p{L}+)?/gu) ?? [];
 const wordCount = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
@@ -18,14 +17,17 @@ const quantile = (xs, q) => {
   return s[Math.round(q * (s.length - 1))];
 };
 
-let freqCache = null;
-/** Spanish frequency ranks (form -> rank), from data/es-frequency.tsv. */
-export function frequencyRanks() {
-  if (!freqCache) {
-    const file = fileURLToPath(new URL('../../data/es-frequency.tsv', import.meta.url));
-    freqCache = new Map(readFileSync(file, 'utf8').trim().split('\n').slice(1).map((l) => { const [r, f] = l.split('\t'); return [f, Number(r)]; }));
+const freqCache = new Map();
+/**
+ * Word frequency ranks (form -> rank) from a suite's word list: a tab-separated file with a
+ * header row and columns rank, form. Suites that use the "words above level" metric bring their
+ * own list for their language (the tutor suite's is suites/tutor-es/es-frequency.tsv).
+ */
+export function frequencyRanks(file) {
+  if (!freqCache.has(file)) {
+    freqCache.set(file, new Map(readFileSync(file, 'utf8').trim().split('\n').slice(1).map((l) => { const [r, f] = l.split('\t'); return [f, Number(r)]; })));
   }
-  return freqCache;
+  return freqCache.get(file);
 }
 
 /** Share of a text's function words that are in `native` rather than `target` (0 = all target language). */
@@ -43,8 +45,9 @@ export function nativeShare(text, { target = 'es', native = 'en' } = {}) {
  * Words above the learner's level: target-language words outside the `levelRank` most frequent
  * forms. Native-language words, numbers and capitalized names are skipped.
  */
-export function aboveLevel(text, { levelRank = 1500, native = 'en', target = 'es' } = {}) {
-  const ranks = frequencyRanks();
+export function aboveLevel(text, { levelRank = 1500, native = 'en', target = 'es', frequencyFile } = {}) {
+  if (!frequencyFile) return { share: null, words: [] };
+  const ranks = frequencyRanks(frequencyFile);
   const out = [];
   let counted = 0;
   // Only sentences that are mostly in the target language: English explanations aren't "hard Spanish".
@@ -72,14 +75,14 @@ const isLikelyEnglish = (w) => EN_HINT.test(w);
  * { target, native, levelRank, maxWords }.
  */
 export function conversationMetrics(history, opts = {}) {
-  const { target = 'es', native = 'en', levelRank = 1500, maxWords = 50 } = opts;
+  const { target = 'es', native = 'en', levelRank = 1500, maxWords = 50, frequencyFile = null } = opts;
   const a = history.filter((h) => h.role === 'assistant');
   const u = history.filter((h) => h.role === 'user');
   const lens = a.map((h) => wordCount(h.text));
   const aWords = lens.reduce((s, x) => s + x, 0);
   const uWords = u.reduce((s, h) => s + wordCount(h.text), 0);
   const allA = a.map((h) => h.text).join('\n');
-  const above = aboveLevel(allA, { levelRank, native, target });
+  const above = aboveLevel(allA, { levelRank, native, target, frequencyFile });
   return {
     turns: a.length,
     wordsMedian: quantile(lens, 0.5),

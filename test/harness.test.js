@@ -27,7 +27,8 @@ test('metrics: turn-length profile, stacked questions, English share, level, tal
   assert.ok(m.nativeShare > 0.5);
   assert.ok(m.userTalkShare > 0 && m.userTalkShare < 0.2);
   assert.equal(nativeShare('¿Qué quieres hacer hoy?'), 0);
-  const al = aboveLevel('Me encanta la jurisprudencia. Ana vive en Bozeman. That sounds great!', { levelRank: 2000 });
+  const al = aboveLevel('Me encanta la jurisprudencia. Ana vive en Bozeman. That sounds great!', { levelRank: 2000, frequencyFile: 'suites/tutor-es/es-frequency.tsv' });
+  assert.equal(aboveLevel('hola', {}).share, null, 'no word list, no measurement');
   assert.deepEqual(al.words, ['jurisprudencia'], 'names and English are skipped');
 });
 

@@ -253,4 +253,4 @@ I built this while developing a voice-based language tutor, where the quality th
 
 ## License
 
-Code: [MIT](LICENSE). The Spanish frequency list in `data/` is derived from [FrequencyWords](https://github.com/hermitdave/FrequencyWords) (OpenSubtitles 2018) and shared under **CC BY-SA 4.0**; see [`data/README.md`](data/README.md).
+Code: [MIT](LICENSE). Example suites may include data under their own licenses: the Spanish tutor suite's word list is derived from [FrequencyWords](https://github.com/hermitdave/FrequencyWords) and shared under CC BY-SA 4.0 (see [`suites/tutor-es/DATA-LICENSE.md`](suites/tutor-es/DATA-LICENSE.md)).

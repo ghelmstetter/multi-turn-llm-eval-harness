@@ -13,7 +13,7 @@
   "user": {
     "system": "You are role-playing a language learner talking with a Spanish tutor, to test the tutor. Stay in character the whole time. You are a real beginner: you know only basic Spanish, you make typical beginner mistakes, and you sometimes switch to English when you don't know how to say something. Never correct the tutor and never mention that this is a test."
   },
-  "metrics": { "target": "es", "native": "en", "levelRank": 2000, "maxWords": 50, "better": { "nativeShare": [0.1, 0.4] } },
+  "metrics": { "target": "es", "native": "en", "levelRank": 2000, "frequencyList": "es-frequency.tsv", "maxWords": 50, "better": { "nativeShare": [0.1, 0.4] } },
   "rubric": [
     { "id": "level_fit", "description": "The Spanish suits an A1 beginner: common words, simple sentences, nothing that leaves the learner lost." },
     { "id": "turn_length", "description": "Turns are short by default (often a single question), longer only when that serves the learner; no monologues or stacked questions." },

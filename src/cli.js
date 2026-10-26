@@ -43,7 +43,9 @@ export function loadPlan(args, { fetchImpl = fetch, env = process.env } = {}) {
   const suiteDir = resolve(args.suite ?? 'suites/tutor-es');
   const suite = JSON.parse(readFileSync(join(suiteDir, 'suite.json'), 'utf8'));
   const cfg = JSON.parse(readFileSync(resolve(args.targets ?? 'examples/targets.json'), 'utf8'));
-  const problems = validateSuite(suite, cfg);
+  const problems = validateSuite(suite, cfg, suiteDir);
+  // A suite's own word list (for "words above level"), relative to the suite's folder.
+  if (suite.metrics?.frequencyList) Object.defineProperty(suite, '_frequencyFile', { value: join(suiteDir, suite.metrics.frequencyList), enumerable: false });
   if (problems.length) throw new Error(`The suite or targets file needs fixing:\n  - ${problems.join('\n  - ')}`);
   const mock = Boolean(args.mock);
   const mode = args.mode ?? 'mirrored';
