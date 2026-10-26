@@ -17,6 +17,7 @@ export class Budget {
     this.spentBefore = this.file ? readSpend(this.file) : 0;
     this.spent = 0;
     this.byRole = {};
+    this.byTarget = {}; // the models under test: what each costs per reply
     this.calls = 0;
   }
 
@@ -28,17 +29,24 @@ export class Budget {
     if (this.spentToday >= this.dailyCapUsd) throw new BudgetExceeded(`Daily evaluation cap of $${this.dailyCapUsd.toFixed(2)} reached`);
   }
 
-  charge(role, price, usage) {
+  charge(role, price, usage, targetId = null) {
     const usd = costOf(price, usage);
     this.spent += usd;
     this.calls += 1;
     this.byRole[role] = (this.byRole[role] ?? 0) + usd;
+    if (role === 'assistant' && targetId) {
+      const t = (this.byTarget[targetId] ??= { usd: 0, replies: 0, inputTokens: 0, outputTokens: 0 });
+      t.usd += usd;
+      t.replies += 1;
+      t.inputTokens += usage?.input ?? 0;
+      t.outputTokens += usage?.output ?? 0;
+    }
     if (this.file) writeSpend(this.file, this.spentToday);
     return usd;
   }
 
   summary() {
-    return { spentUsd: this.spent, calls: this.calls, byRole: this.byRole, runCapUsd: this.runCapUsd, dailyCapUsd: this.dailyCapUsd, spentTodayUsd: this.spentToday };
+    return { spentUsd: this.spent, calls: this.calls, byRole: this.byRole, byTarget: this.byTarget, runCapUsd: this.runCapUsd, dailyCapUsd: this.dailyCapUsd, spentTodayUsd: this.spentToday };
   }
 }
 
@@ -54,7 +62,7 @@ function writeSpend(file, usd) {
 export async function charged(budget, role, target, req) {
   budget.check();
   const out = await target.chat(req);
-  out.usd = budget.charge(role, target.price, out.usage);
+  out.usd = budget.charge(role, target.price, out.usage, target.id);
   return out;
 }
 

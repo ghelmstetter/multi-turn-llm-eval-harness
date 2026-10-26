@@ -149,7 +149,7 @@ test('independent mock run: own conversations per target, whole-transcript pairs
   assert.equal(results.pairs.length, 2);
   assert.equal(results.summary.comparison.conversationsCompared, 2);
   assert.ok(results.summary.targets['flash-plain'].checksTotal > 0);
-  assert.match(renderReport(results), /Whole-conversation comparison/);
+  assert.match(renderReport(results), /Which whole conversation was better/);
 });
 
 test('estimates grow with turns, repeats and mode, and are zero for mock targets', () => {

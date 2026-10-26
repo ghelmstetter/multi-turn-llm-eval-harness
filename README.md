@@ -95,7 +95,19 @@ npm test        # 12 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
-The demo writes `results/demo/report.html`. The report opens with the bottom line: which target won, how sure that is (a 95% interval on the head-to-head win rate, so "too close to call" is a possible answer), and whether the rubric judge, the code metrics and the case checks agree. The detailed tables and every conversation follow, with the better value in each row in bold. Mock models are deterministic stand-ins that exercise the whole pipeline; the report labels mock runs clearly, and their numbers say nothing about real models.
+The demo writes `results/demo/report.html`, a single file that opens in any browser. Mock models are deterministic stand-ins that exercise the whole pipeline; the report labels mock runs clearly, and their numbers say nothing about real models.
+
+### Reading the report
+
+- **The verdict comes first:** which target won, how sure that is, and at what cost. "How sure" is a 95% interval on the head-to-head win rate, so "too close to call" is a possible answer. Below it, the report says whether the rubric judge, the code metrics and the case checks agree.
+- **What was compared:** each target's description and its full prompt, and each case's goal.
+- **Charts for each kind of evidence:** head-to-head win shares (split by whose conversation was being continued), every reply's length as a dot against the monologue limit, the code metrics and rubric scores side by side, and cost. Every chart has a "Show as a table" view, and hovering a mark shows its exact value.
+- **Every conversation in full,** with each reply's word count, the shadow answer and the judge's two reasons at every turn, and the rubric's reason for every score.
+- **Every term explained:** each ⓘ button opens what the term is, how to read it and why it matters, and a glossary at the end collects them all.
+
+### Cost and value
+
+The report shows what each target costs to run (per 1,000 replies, from its tokens at the configured price) next to its quality, and says plainly whether the winner is **better and cheaper**, **better at about the same cost**, or **better but more expensive** (and by how much per million replies). Quality here is a win rate or a 1-to-5 score, which isn't measured in dollars, so the report states the trade-off instead of blending the two into a single "quality per dollar" number. The cost of running the evaluation itself (the simulated user and the judge) is reported separately, since it isn't a cost of the product.
 
 ### A real run
 
@@ -107,7 +119,12 @@ node src/cli.js estimate      # cost estimate only
 node src/cli.js run           # all cases, mirrored mode, 6 turns
 ```
 
-The example compares **the same model with two prompts**: a one-line "plain" tutor prompt and a "coached" prompt with explicit rules about turn length, language mix and correction. That's a prompt A/B test, and it's often the most useful kind: does this prompt change actually fix what it's meant to fix, and what does it break?
+The example compares **the same model with two prompts**, defined in the suite and named in [`examples/targets.json`](examples/targets.json):
+
+- **`flash-plain`:** Gemini Flash with a three-sentence tutor prompt (who the tutor is, who the learner is, "help them learn") and no guidance on how to talk. The baseline.
+- **`flash-coached`:** the same model and the same opening, plus explicit rules: short turns with one question at a time, mostly simple Spanish with English for support, gentle corrections by recasting, honest praise, and responding to hard news first.
+
+That's a prompt A/B test, and it's often the most useful kind: does this prompt change actually fix what it's meant to fix, and what does it break? Target names and descriptions are yours to write; the report shows each target's description and its full prompt, so a reader always knows what was compared.
 
 ### Options
 

@@ -16,6 +16,7 @@ import { runConversation, assistantMessages, assistantSystem } from './conversat
 import { charged, BudgetExceeded } from './budget.js';
 import { conversationMetrics, runChecks } from './graders/metrics.js';
 import { judgeRubric, judgePair, turnContext, transcriptText } from './graders/judge.js';
+import { costOf } from './budget.js';
 
 const mean = (xs) => { const v = xs.filter((x) => Number.isFinite(x)); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
 
@@ -201,4 +202,34 @@ export function verdict({ mode, targets, comparison, perTarget, better = METRIC_
   }
   const checks = Object.fromEntries([X, Y].map((id) => [id, { passed: perTarget[id]?.checksPassed ?? 0, total: perTarget[id]?.checksTotal ?? 0 }]));
   return { winner: strength === 'tie' ? null : lead, leader: lead, other, strength, winRate: p, ci, n, unit: mode === 'mirrored' ? 'turns' : 'conversation pairs', rubricLead, rubric: { [X]: rx, [Y]: ry }, metricWins, checks };
+}
+
+/**
+ * What each target costs to run, from its replies' tokens at its configured (list) price.
+ * This is the product cost of using that target; the simulated user and the judge are
+ * evaluation overhead and aren't included.
+ */
+export function costPerTarget(targets, byTarget = {}) {
+  return Object.fromEntries(targets.map((t) => {
+    const b = byTarget[t.id];
+    if (!b?.replies) return [t.id, null];
+    const usd = costOf(t.listPrice ?? t.price, { input: b.inputTokens, output: b.outputTokens });
+    return [t.id, { replies: b.replies, perThousandUsd: (usd / b.replies) * 1000, inputPerReply: b.inputTokens / b.replies, outputPerReply: b.outputTokens / b.replies }];
+  }));
+}
+
+/**
+ * Quality against cost, in words: is the winner also cheaper, about the same, or more
+ * expensive (and by how much)? Quality scores aren't in dollars, so this reports the trade-off
+ * instead of inventing a single "quality per dollar" number.
+ */
+export function valueOf(v, cost) {
+  if (!v || !cost[v.leader] || !cost[v.other]) return null;
+  const a = cost[v.leader].perThousandUsd;
+  const b = cost[v.other].perThousandUsd;
+  const diff = b > 0 ? (a - b) / b : 0;
+  const same = Math.abs(diff) < 0.03;
+  const kind = v.strength === 'tie' ? (same ? 'tie-same' : a < b ? 'tie-leader-cheaper' : 'tie-other-cheaper')
+    : same ? 'better-same' : a < b ? 'better-cheaper' : 'better-pricier';
+  return { kind, diff, leaderPerThousand: a, otherPerThousand: b };
 }

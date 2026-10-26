@@ -20,7 +20,7 @@ import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { makeTarget } from './targets/index.js';
 import { Budget, estimateRun } from './budget.js';
-import { runMirrored, runIndependent, summarize } from './run.js';
+import { runMirrored, runIndependent, summarize, costPerTarget, valueOf } from './run.js';
 import { renderReport } from './report/html.js';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
@@ -75,11 +75,15 @@ export async function execute(plan, { budget, log = () => {} } = {}) {
   const runner = plan.mode === 'mirrored' ? runMirrored : runIndependent;
   const out = await runner({ ...plan, budget, log });
   const summary = summarize({ mode: plan.mode, targets: plan.targets, suite: plan.suite, conversations: out.conversations, pairs: out.pairs });
-  const pick = (t) => ({ id: t.id, label: t.label, vendor: t.vendor, model: t.model, prompt: t.prompt, temperature: t.temperature });
+  summary.cost = costPerTarget(plan.targets, budget.byTarget);
+  if (summary.verdict) summary.verdict.value = valueOf(summary.verdict, summary.cost);
+  const pick = (t) => ({ id: t.id, label: t.label, description: t.description, vendor: t.vendor, model: t.model, prompt: t.prompt, temperature: t.temperature, price: t.listPrice });
   return {
     meta: {
       harnessVersion: VERSION, startedAt, finishedAt: new Date().toISOString(), mode: plan.mode, mock: plan.mock,
-      suite: { id: plan.suite.id, title: plan.suite.title }, roleNames: plan.suite.roleNames, rubric: plan.suite.rubric,
+      suite: { id: plan.suite.id, title: plan.suite.title, description: plan.suite.description, metrics: plan.suite.metrics }, roleNames: plan.suite.roleNames, rubric: plan.suite.rubric,
+      prompts: Object.fromEntries([...new Set(plan.targets.map((t) => t.prompt ?? plan.suite.defaultPrompt))].map((v) => [v, plan.suite.prompts[v]])),
+      caseInfo: plan.cases.map((c) => ({ id: c.id, title: c.title, goal: c.goal })),
       cases: plan.cases.map((c) => c.id), turns: plan.turns, repeats: plan.repeats,
       targets: plan.targets.map(pick), user: pick(plan.user), judge: pick(plan.judge), budget: budget.summary(),
     },
