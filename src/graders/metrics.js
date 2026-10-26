@@ -25,7 +25,7 @@ const freqCache = new Map();
  */
 export function frequencyRanks(file) {
   if (!freqCache.has(file)) {
-    freqCache.set(file, new Map(readFileSync(file, 'utf8').trim().split(/\r?\n/).slice(1).map((l) => { const [r, f] = l.split('\t'); return [f, Number(r)]; })));
+    freqCache.set(file, new Map(readFileSync(file, 'utf8').trim().split(/\r*\n/).slice(1).map((l) => { const [r, f] = l.split('\t'); return [f, Number(r)]; })));
   }
   return freqCache.get(file);
 }

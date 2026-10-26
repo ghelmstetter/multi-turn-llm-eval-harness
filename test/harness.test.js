@@ -209,6 +209,6 @@ test('word lists with Windows line endings (CRLF) read the same as Unix ones', a
   const { join } = await import('node:path');
   const { tmpdir } = await import('node:os');
   const crlf = join(mkdtempSync(join(tmpdir(), 'mtle-')), 'list.tsv');
-  writeFileSync(crlf, readFileSync('suites/tutor-es/es-frequency.tsv', 'utf8').replace(/\n/g, '\r\n'));
+  writeFileSync(crlf, readFileSync('suites/tutor-es/es-frequency.tsv', 'utf8').replace(/\r?\n/g, '\r\n'));
   assert.deepEqual(aboveLevel('Me encanta la jurisprudencia.', { levelRank: 2000, frequencyFile: crlf }).words, ['jurisprudencia']);
 });
