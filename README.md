@@ -23,7 +23,11 @@ The first real run compared Gemini Flash with a plain tutor prompt against the s
 - **The coached prompt did what it was written to do.** Replies got about 60% shorter (median 22 words vs. 58), monologues disappeared, English fell from 72% to 27% (inside the 10–40% target), and the learner's share of the talking doubled. The rubric judge agreed (4.7 vs. 4.2 out of 5), at the same cost per reply.
 - **But the head-to-head verdict was only "leaning"** (55% of turns, 95% interval 45–66%), and the per-case breakdown showed why: the coached prompt **lost three cases** where a beginner needed patience. When a nervous learner asked to switch to English, it gave up on Spanish entirely ("We can just chat in English"); pushed toward more Spanish, it used past tenses a beginner hasn't learned; and it skipped corrections it should have made.
 
-An average-only evaluation would have shipped this prompt as a clear improvement. The multi-turn cases caught the regression, and the report's analysis turns it into specific prompt changes to test next. **[Read the analysis](docs/sample-report/notes.md)** or download the **[full report](docs/sample-report/report.html)** (open it in a browser).
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><img src="docs/images/verdict.png" alt="The report's verdict: leaning toward the coached prompt (55% of 84 turns, 95% interval 45–66%), at about the same cost and speed, with the rubric and code metrics agreeing" width="760"></a>
+
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><img src="docs/images/by-case.png" alt="Head-to-head results by case: the coached prompt wins four cases, but the plain prompt wins 'Learner keeps answering in English' 67% to 25%, plus two other cases" width="760"></a>
+
+An average-only evaluation would have shipped this prompt as a clear improvement. The multi-turn cases caught the regression, and the report's analysis turns it into specific prompt changes to test next. **[Read the analysis](docs/sample-report/notes.md)** or open the **[full interactive report](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html)**.
 
 
 ---
