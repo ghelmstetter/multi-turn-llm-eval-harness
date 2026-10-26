@@ -1,0 +1,15 @@
+{
+  "name": "multi-turn-llm-eval-harness",
+  "version": "0.1.0",
+  "description": "A harness for evaluating LLMs in multi-turn conversations: mirrored pairwise runs, scripted simulated users, code-measured metrics and bias-controlled LLM judges.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Greg Helmstetter",
+  "engines": { "node": ">=20" },
+  "bin": { "mtle": "src/cli.js" },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node src/cli.js run --suite suites/tutor-es --targets examples/targets.json --mode mirrored --cases baseline,repeated-mistake --turns 4 --mock --yes --out results/demo"
+  },
+  "keywords": ["llm", "evaluation", "evals", "multi-turn", "llm-as-a-judge", "pairwise", "conversational-ai"]
+}

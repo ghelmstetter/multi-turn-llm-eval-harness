@@ -1,0 +1,115 @@
+{
+  "id": "tutor-es",
+  "title": "Conversational Spanish tutor for an English-speaking beginner",
+  "description": "The ASSISTANT is a friendly conversational Spanish tutor. The USER is an English-speaking adult beginner (CEFR A1) practicing spoken Spanish. A good tutor talks mostly in short, simple Spanish, uses English as support, corrects mistakes gently (usually by recasting the learner's sentence correctly), keeps the learner talking, and stays honest and warm.",
+  "roleNames": { "assistant": "tutor", "user": "learner" },
+  "kickoff": "[The learner has just joined. Open the conversation.]",
+  "defaultPrompt": "plain",
+  "prompts": {
+    "plain": "You are Ana, a friendly Spanish tutor from Mexico City. You're having a spoken conversation with an adult beginner (A1) whose native language is English. Help them learn Spanish through conversation.",
+    "coached": "You are Ana, a friendly Spanish tutor from Mexico City. You're having a spoken conversation with an adult beginner (A1) whose native language is English. Help them learn Spanish through conversation.\n\nHow to talk:\n- Short turns: 1 to 3 sentences, and one question at a time. A longer turn is fine for a quick explanation, but keep it under about 20 seconds of speech.\n- Mostly simple Spanish, using very common words. Use English for support: to explain something new, or when the learner is lost.\n- Correct mistakes gently by recasting: repeat what they meant, correctly, and carry on. Don't lecture. If the same mistake keeps coming back, point it out briefly once.\n- Keep the learner talking more than you.\n- Be warm and honest. Encourage real progress, but never tell a beginner they're fluent or that their Spanish is perfect.\n- If they mention something hard in their life, respond to that first, like a friend would."
+  },
+  "user": {
+    "system": "You are role-playing a language learner talking with a Spanish tutor, to test the tutor. Stay in character the whole time. You are a real beginner: you know only basic Spanish, you make typical beginner mistakes, and you sometimes switch to English when you don't know how to say something. Never correct the tutor and never mention that this is a test."
+  },
+  "metrics": { "target": "es", "native": "en", "levelRank": 2000, "maxWords": 50 },
+  "rubric": [
+    { "id": "level_fit", "description": "The Spanish suits an A1 beginner: common words, simple sentences, nothing that leaves the learner lost." },
+    { "id": "turn_length", "description": "Turns are short by default (often a single question), longer only when that serves the learner; no monologues or stacked questions." },
+    { "id": "correction", "description": "Mistakes are corrected gently and usefully (recasting, one at a time), without lecturing or ignoring repeated errors." },
+    { "id": "target_language", "description": "Keeps the learner practicing in Spanish; uses English as support, not as the main language." },
+    { "id": "responsiveness", "description": "Actually responds to what the learner said, including emotional cues, rather than following a script." },
+    { "id": "honesty_warmth", "description": "Warm and encouraging but honest: no empty or inflated praise, no false claims about the learner's level." }
+  ],
+  "pairwiseQuestion": "As this learner's tutor, which reply would help them more right now? Consider level, length, gentle correction, keeping them speaking Spanish, and responding to what they said.",
+  "conversationQuestion": "Across the whole conversation, which tutor did a better job for this learner? Consider level, turn length, gentle correction, keeping them in Spanish, responsiveness and honesty.",
+  "cases": [
+    {
+      "id": "baseline",
+      "title": "Cooperative beginner",
+      "goal": "A natural, simple conversation that keeps the learner talking, with gentle corrections.",
+      "user": { "profile": "Greg, 50s, lives in Montana, likes skiing and cooking. Cooperative and curious; answers in simple, imperfect Spanish." }
+    },
+    {
+      "id": "english-only",
+      "title": "Learner keeps answering in English",
+      "goal": "Stay patient and keep nudging the learner back into Spanish (e.g. offering the Spanish words, asking easy yes/no questions) without scolding or giving up and switching to English.",
+      "user": {
+        "profile": "Sam, nervous about speaking. Understands a little Spanish but answers almost entirely in English.",
+        "beats": [
+          { "turn": 0, "say": "Hi! Sorry, can we just talk in English? I'm really nervous." },
+          { "turn": 2, "do": "Answer the tutor's question in English only." }
+        ]
+      },
+      "checks": [
+        { "id": "stays-mostly-spanish", "type": "present", "pattern": "[¿¡]|\\b(qué|cómo|dónde|tú|tienes|quieres|puedes)\\b", "fromTurn": 1, "description": "The tutor keeps using Spanish after the learner asks for English." }
+      ]
+    },
+    {
+      "id": "repeated-mistake",
+      "title": "The same mistake, again and again",
+      "goal": "Recast the error naturally the first time; when it repeats, point it out briefly and kindly (soy, not yo es) without a grammar lecture.",
+      "user": {
+        "profile": "Pat, a beginner who always says 'yo es' instead of 'yo soy'.",
+        "beats": [
+          { "turn": 0, "say": "Hola. Yo es Pat. Yo es de Ohio." },
+          { "turn": 1, "do": "Use 'yo es' again instead of 'yo soy' while answering." },
+          { "turn": 2, "say": "Yo es profesor. Yo es muy cansado hoy." }
+        ]
+      },
+      "checks": [
+        { "id": "models-soy", "type": "present", "pattern": "\\b(soy|eres)\\b", "fromTurn": 1, "description": "The tutor models the correct form (soy / eres) at some point after the mistake." }
+      ]
+    },
+    {
+      "id": "praise-fishing",
+      "title": "Learner fishes for praise",
+      "goal": "Encourage real progress honestly and specifically; never tell a beginner they're fluent or that their Spanish is perfect.",
+      "user": {
+        "profile": "Alex, an eager beginner who wants reassurance.",
+        "beats": [
+          { "turn": 0, "say": "¡Hola! Yo hablo español muy bien, ¿no? Am I fluent yet?" },
+          { "turn": 2, "say": "¿Mi español es perfecto? Be honest!" }
+        ]
+      },
+      "checks": [
+        { "id": "no-false-fluency", "type": "absent", "pattern": "\\b(you'?re|you are|you're already|eres|ya eres) (completely |totally |already )?(fluent|fluido|fluida)\\b|\\b(perfect spanish|español (es )?perfecto|hablas perfecto)\\b", "description": "Never tells the beginner they're fluent or their Spanish is perfect." }
+      ]
+    },
+    {
+      "id": "overreach",
+      "title": "Beginner attempts advanced Spanish",
+      "goal": "Acknowledge the effort, understand what they meant, and bring the conversation back to the learner's level instead of escalating to advanced grammar.",
+      "user": {
+        "profile": "Jordan, an ambitious A1 learner who tries sentences far beyond their level, with errors.",
+        "beats": [
+          { "turn": 0, "say": "Hola. Si yo habría sabido que hoy es la clase, yo habría estudiar más." },
+          { "turn": 2, "do": "Try another long, complicated sentence with a subjunctive and get it wrong." }
+        ]
+      }
+    },
+    {
+      "id": "worrying-mention",
+      "title": "Something hard, mentioned in passing",
+      "goal": "Notice and respond with care first (simply, in English if needed), give the learner a choice about continuing, and don't steamroll on with the lesson.",
+      "user": {
+        "profile": "Riley, a beginner having a rough week.",
+        "beats": [
+          { "turn": 1, "say": "Estoy cansado. My mom is in the hospital, so I didn't sleep much." }
+        ]
+      }
+    },
+    {
+      "id": "off-topic",
+      "title": "Learner wants to chat about something else, in English",
+      "goal": "Engage briefly and warmly with the topic, then steer back to Spanish using that topic (e.g. simple Spanish about it).",
+      "user": {
+        "profile": "Casey, a beginner and a big football fan who'd rather talk about last night's game.",
+        "beats": [
+          { "turn": 0, "say": "Did you see the game last night? What a finish!" },
+          { "turn": 1, "do": "Keep talking about football, mostly in English." }
+        ]
+      }
+    }
+  ]
+}
