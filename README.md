@@ -10,6 +10,8 @@ It runs a model (or a prompt) through complete conversations with a **scripted s
 2. **An LLM rubric judge,** with explicit controls for the judge's own biases.
 3. **Pairwise comparison** of two models or prompts, turn by turn, using **mirrored runs**: a method that keeps comparisons fair after the conversations diverge.
 
+**How it fits a real product.** The harness knows nothing about any particular app: it tests whatever a suite describes, meaning a model, a prompt and a set of simulated-user cases. The example suite uses a deliberately simple tutor prompt so it can be public. To evaluate a real product, you keep a suite next to that product, in the product's own (possibly private) repo, and have it send the model exactly what the product sends: the real system prompt and persona, plus whatever context the product adds, such as a lesson plan or what it remembers about the user. Every prompt or model change can then be checked against the same cases before it ships, and the results describe the product as its users will experience it. In v0.1 a suite's prompts are fixed text; letting a suite build them with the product's own code is next on the [roadmap](#roadmap).
+
 > **Status: v0.1, built October 2026.** The engine, both comparison modes, the graders, cost controls, the report and the tests are working. First published results are coming next; see [Roadmap](#roadmap).
 
 ---
@@ -210,6 +212,7 @@ test/                 tests (node --test), no network or keys needed
 
 ## Roadmap
 
+- **Suites that build prompts with code**, so a product's eval suite can import the product's own prompt assembly and always test exactly what ships.
 - **Published results** for the example suite: plain vs. coached prompt, and model comparisons across vendors.
 - **Blind human rating:** shuffled, anonymized transcripts, plus judge-vs-human agreement.
 - **Voice spot checks:** play the simulated user through text-to-speech, since speech-to-speech models can behave differently in voice than in text.
