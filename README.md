@@ -110,7 +110,7 @@ The example compares **the same model with two prompts**: a one-line "plain" tut
 | Option | What it does | Default | When to use it |
 |---|---|---|---|
 | `--mode mirrored` / `--mode independent` | Mirrored compares two targets reply by reply on a shared conversation; independent gives each target its own complete conversations (see [the two modes](#the-problem-with-evaluating-conversations)) | `mirrored` | Mirrored for "which gives the better reply at each moment?"; independent for "which runs the better conversation overall?" |
-| `--compare a,b` | Which targets to compare, by their `id` in the targets file | the first two | Once the targets file has more than two (e.g. models from different vendors) |
+| `--compare a,b` | Which targets (model + prompt setups) to compare, by their `id` in the targets file | the first two | Once the targets file has more than two (e.g. models from different vendors) |
 | `--cases a,b` | Run only these cases, by their `id` in the suite | all | Checking one behavior quickly and cheaply after changing a prompt |
 | `--turns N` | Assistant turns per conversation | `6` | Longer conversations surface drift, forgetting and pacing problems |
 | `--repeats N` | Conversations per case (and per target) | `1` | Models are random; repeats average out lucky or unlucky conversations and show how much results vary |
