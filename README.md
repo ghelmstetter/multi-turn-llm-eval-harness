@@ -23,11 +23,49 @@ The first real run compared Gemini Flash with a plain tutor prompt against the s
 - **The coached prompt did what it was written to do.** Replies got about 60% shorter (median 22 words vs. 58), monologues disappeared, English fell from 72% to 27% (inside the 10–40% target), and the learner's share of the talking doubled. The rubric judge agreed (4.7 vs. 4.2 out of 5), at the same cost per reply.
 - **But the head-to-head verdict was only "leaning"** (55% of turns, 95% interval 45–66%), and the per-case breakdown showed why: the coached prompt **lost three cases** where a beginner needed patience. When a nervous learner asked to switch to English, it gave up on Spanish entirely ("We can just chat in English"); pushed toward more Spanish, it used past tenses a beginner hasn't learned; and it skipped corrections it should have made.
 
-<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><img src="docs/images/verdict.png" alt="The report's verdict: leaning toward the coached prompt (55% of 84 turns, 95% interval 45–66%), at about the same cost and speed, with the rubric and code metrics agreeing" width="760"></a>
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/verdict-dark.png">
+  <img src="docs/images/verdict-light.png" alt="The report's verdict: leaning toward the coached prompt (55% of 84 turns, 95% interval 45–66%), at about the same cost and speed, with the rubric and code metrics agreeing" width="760">
+</picture></a>
 
-<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><img src="docs/images/by-case.png" alt="Head-to-head results by case: the coached prompt wins four cases, but the plain prompt wins 'Learner keeps answering in English' 67% to 25%, plus two other cases" width="760"></a>
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/by-case-dark.png">
+  <img src="docs/images/by-case-light.png" alt="Head-to-head results by case: the coached prompt wins four cases, but the plain prompt wins 'Learner keeps answering in English' 67% to 25%, plus two other cases" width="760">
+</picture></a>
 
 An average-only evaluation would have shipped this prompt as a clear improvement. The multi-turn cases caught the regression, and the report's analysis turns it into specific prompt changes to test next. **[Read the analysis](docs/sample-report/notes.md)** or open the **[full interactive report](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html)**.
+
+### More from the report
+
+The same run, four more views. Every number in the report has a hover tooltip and an ⓘ explanation.
+
+**Reply lengths.** Every tutor reply as a dot. The coached prompt's replies cluster well under the monologue limit.
+
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/reply-lengths-dark.png">
+  <img src="docs/images/reply-lengths-light.png" alt="Every reply as a dot on a words-per-turn axis: the plain prompt's replies spread from about 15 to 94 words with many past the 50-word monologue limit; the coached prompt's cluster between 5 and 45" width="760">
+</picture></a>
+
+**Measured in code.** Free, deterministic metrics on every conversation.
+
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/code-metrics-dark.png">
+  <img src="docs/images/code-metrics-light.png" alt="Code-measured metrics, plain vs coached: median words per turn 58 vs 22, 90th percentile 71 vs 30, monologues per conversation 2.9 vs 0, turns with 2+ questions 5.0 vs 1.7, English share 72% vs 27% (target 10–40%), words above the learner's level 20% vs 17%, learner's share of the talking 17% vs 34%" width="760">
+</picture></a>
+
+**Judged by the rubric.** An LLM judge's 1–5 scores for each whole conversation, each with a written reason.
+
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/rubric-dark.png">
+  <img src="docs/images/rubric-light.png" alt="Rubric scores, plain vs coached: level fit 5.0 vs 4.6, turn length 3.4 vs 4.9, correction 4.6 vs 4.6, target language 3.1 vs 4.7, responsiveness 5.0 vs 4.7, honesty and warmth 4.1 vs 4.9" width="760">
+</picture></a>
+
+**Cost, speed and value.** What each option costs per 1,000 replies at list price, how fast it answers, and what the evaluation itself cost.
+
+<a href="https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/cost-speed-dark.png">
+  <img src="docs/images/cost-speed-light.png" alt="Cost and speed, plain vs coached: $1.83 vs $1.81 per 1,000 replies, typical response 5.4 s vs 5.0 s, slow-end 7.2 s vs 6.7 s; the evaluation cost $0.76 over 404 model calls, 46% of it the judge" width="760">
+</picture></a>
 
 
 ---
