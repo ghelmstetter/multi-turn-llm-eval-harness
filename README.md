@@ -2,13 +2,13 @@
 
 A harness for evaluating LLMs in **multi-turn conversations**, where most evaluation tools only look at single prompts and single answers.
 
-It runs a model (or a prompt) through complete conversations with a **scripted simulated user**, then grades it three ways, cheapest first:
+Its first suite evaluates a **conversational Spanish tutor**: a model playing a friendly tutor for an English-speaking beginner, talking with a simulated learner. The engine itself is domain-neutral (a suite is a JSON file of prompts, simulated-user cases, checks and a rubric), so the same approach works for other conversational assistants, such as support agents or coaches.
 
-1. **Code-measured metrics:** turn-length profile, monologues, stacked questions, language mix, words above the user's level, and who does the talking.
+It runs a model (or a prompt) through complete conversations with a **scripted simulated user** (here, the learner), then grades it three ways, cheapest first:
+
+1. **Code-measured metrics:** the turn-length profile, monologues and stacked questions, plus, for the tutor, how much English it uses, how many of its words are above the learner's level, and how much of the talking the learner gets to do.
 2. **An LLM rubric judge,** with explicit controls for the judge's own biases.
-3. **Pairwise comparison** of two models, turn by turn, using **mirrored runs**: a method that keeps comparisons fair after the conversations diverge.
-
-The first suite evaluates a **conversational Spanish tutor**. The engine itself is domain-neutral: a suite is a JSON file of prompts, simulated-user cases, checks and a rubric.
+3. **Pairwise comparison** of two models or prompts, turn by turn, using **mirrored runs**: a method that keeps comparisons fair after the conversations diverge.
 
 > **Status: v0.1, built October 2026.** The engine, both comparison modes, the graders, cost controls, the report and the tests are working. First published results are coming next; see [Roadmap](#roadmap).
 
