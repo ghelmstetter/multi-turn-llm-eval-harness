@@ -212,3 +212,21 @@ test('word lists with Windows line endings (CRLF) read the same as Unix ones', a
   writeFileSync(crlf, readFileSync('suites/tutor-es/es-frequency.tsv', 'utf8').replace(/\r?\n/g, '\r\n'));
   assert.deepEqual(aboveLevel('Me encanta la jurisprudencia.', { levelRank: 2000, frequencyFile: crlf }).words, ['jurisprudencia']);
 });
+
+test('re-scoring a saved run, findings, and analysis notes', async () => {
+  const { rescore, findings, byCase, markdownToHtml } = await import('../src/analysis.js');
+  const plan = loadPlan(parseArgs(['--mock', '--cases', 'baseline,praise-fishing', '--turns', '3']));
+  const results = JSON.parse(JSON.stringify(await execute(plan, { budget: new Budget({ runCapUsd: 1 }) })));
+  for (const c of results.conversations) c.checks = []; // as if the checks had changed since the run
+  const re = rescore(results, 'suites/tutor-es');
+  assert.ok(re.conversations.some((c) => c.checks.length), 'checks re-run from the suite');
+  assert.ok(re.meta.rescoredAt);
+  assert.equal(byCase(re).length, 2);
+  assert.ok(findings(re).some((f) => f.kind === 'metrics'));
+  assert.match(markdownToHtml('## Title\n\n- **one** item\n- *two*'), /<h4>Title<\/h4>[\s\S]*<li><b>one<\/b> item<\/li><li><i>two<\/i><\/li>/);
+  re.meta.notes = '## What happened\n\nThe coached prompt won.';
+  const html = renderReport(re);
+  assert.match(html, /Analysis and recommendations/);
+  assert.match(html, /<h1>Multi-Turn LLM Eval Harness<\/h1>/);
+  assert.match(html, /By case/);
+});

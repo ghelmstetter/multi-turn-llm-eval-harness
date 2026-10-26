@@ -3,7 +3,10 @@
 //   mtle estimate --suite <dir> --targets <file> [options]   show the cost estimate only
 //   mtle run      --suite <dir> --targets <file> [options]   run, save results.json and report.html
 //   mtle validate --suite <dir> --targets <file>               check a suite and targets file, explaining any problems
-//   mtle report   <results.json>                             re-render a report
+//   mtle report   <results.json> [--suite <dir>] [--notes <file.md>]
+//                 re-render a report; with --suite, re-score the saved transcripts with the suite's
+//                 current metrics and checks (free: no model calls); with --notes, add an
+//                 analysis section written by you (or an assistant)
 // Options:
 //   --mode mirrored|independent   (default mirrored)
 //   --compare a,b                 target ids to compare (default: the first two)
@@ -24,6 +27,7 @@ import { Budget, estimateRun } from './budget.js';
 import { runMirrored, runIndependent, summarize, costPerTarget, valueOf } from './run.js';
 import { renderReport } from './report/html.js';
 import { validateSuite } from './suite.js';
+import { rescore } from './analysis.js';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -71,7 +75,8 @@ export function loadPlan(args, { fetchImpl = fetch, env = process.env } = {}) {
 }
 
 export function estimateFor(plan) {
-  const systemChars = Math.max(...plan.targets.map((t) => (plan.suite.prompts[t.prompt ?? plan.suite.defaultPrompt] ?? '').length)) + 600;
+  const lens = plan.targets.map((t) => (plan.suite.prompts[t.prompt ?? plan.suite.defaultPrompt] ?? '').length);
+  const systemChars = lens.reduce((s, x) => s + x, 0) / lens.length;
   return estimateRun({ mode: plan.mode, targets: plan.targets, judge: plan.judge, user: plan.user, cases: plan.cases.length, turns: plan.turns, repeats: plan.repeats, systemChars, rubric: plan.rubric });
 }
 
@@ -117,9 +122,18 @@ async function main(argv) {
   const cmd = args._[0];
   if (cmd === 'report') {
     const file = args._[1];
-    const results = JSON.parse(readFileSync(file, 'utf8'));
-    const outFile = file.replace(/results\.json$/, 'report.html');
-    writeFileSync(outFile === file ? `${file}.html` : outFile, renderReport(results));
+    let results = JSON.parse(readFileSync(file, 'utf8'));
+    if (args.suite) {
+      results = rescore(results, resolve(args.suite));
+      writeFileSync(file, JSON.stringify(results, null, 2));
+      console.log('Re-scored the saved transcripts with the suite\'s current metrics and checks.');
+    }
+    if (args.notes) {
+      results.meta.notes = readFileSync(resolve(args.notes), 'utf8');
+      writeFileSync(file, JSON.stringify(results, null, 2));
+    }
+    const outFile = /results\.json$/.test(file) ? file.replace(/results\.json$/, 'report.html') : `${file}.html`;
+    writeFileSync(outFile, renderReport(results));
     console.log(`Wrote ${outFile}`);
     return;
   }

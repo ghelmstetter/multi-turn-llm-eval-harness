@@ -146,6 +146,24 @@ export const GLOSSARY = {
     means: 'Prompt variants on the same model differ mainly through prompt length (a longer prompt costs more on every turn) and reply length.',
     why: 'This is the running cost of the product. A better target that costs much more may or may not be worth it; a better and cheaper one is an easy decision.',
   },
+  findings: {
+    term: 'Findings',
+    what: 'Facts pulled from the results automatically: the biggest measured differences, cases where the overall loser won, failed checks, and rubric criteria where the judges disagree with the headline.',
+    means: 'Each finding points to somewhere worth reading closely. They report what happened, not why; interpretation belongs in the analysis.',
+    why: 'An overall verdict averages over everything. The most important problems often hide in one case, like a regression on a single kind of user.',
+  },
+  byCase: {
+    term: 'By case',
+    what: 'The head-to-head results, failed checks and rubric scores broken down for each case.',
+    means: 'A case where the overall loser wins is a regression, or a strength of the loser, that the overall numbers hide.',
+    why: 'Prompt changes rarely help everywhere. Seeing where a change hurts is how you decide whether to ship it, and what to fix first.',
+  },
+  analysis: {
+    term: 'Analysis and recommendations',
+    what: 'Notes written about this run by a person (or an assistant) after reading the results: what the numbers mean, likely causes, and what to try next.',
+    means: 'Recommendations are hypotheses to test with another run, not proven fixes.',
+    why: 'Numbers say what happened; turning them into a decision takes judgment. Keeping that judgment next to the evidence makes it easy to check.',
+  },
   latency: {
     term: 'Response time',
     what: 'How long the model took to return a complete reply, measured per call: the typical (median) reply and the slow end (90th percentile, which 1 in 10 replies is slower than).',

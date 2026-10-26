@@ -68,13 +68,17 @@ export async function charged(budget, role, target, req) {
 }
 
 /**
- * Rough pre-run estimate. Tokens are estimated from prompt sizes (4 characters per token) and
- * typical reply lengths, then a 30% margin is added. It errs high on purpose.
+ * Pre-run estimate. Tokens are estimated from prompt sizes (4 characters per token), typical
+ * visible reply lengths, and hidden "thinking" tokens: reasoning models such as Gemini Flash
+ * spend a few hundred output tokens thinking on every call, billed as output. Set
+ * "thinkingTokens" per model in the targets file (default 300, calibrated on a real Gemini
+ * Flash run; use 0 for models that don't think). A 15% margin is added.
  */
 export function estimateRun({ mode, targets, judge, user, cases, turns, repeats, systemChars = 2000, rubric = true }) {
-  const T = { tutorOut: 120, userOut: 40, judgeOut: 250, turnTokens: 90 };
+  const T = { tutorOut: 120, userOut: 40, judgeOut: 250, pairOut: 60, turnTokens: 40 };
+  const think = (m) => m?.thinkingTokens ?? 300;
   const sys = systemChars / 4;
-  // A tutor call at turn t sees the system prompt plus t exchanges.
+  // An assistant call at turn t sees the system prompt plus t exchanges.
   const tutorIn = (t) => sys + t * T.turnTokens * 2;
   let assistantUsd = 0;
   let userUsd = 0;
@@ -86,14 +90,14 @@ export function estimateRun({ mode, targets, judge, user, cases, turns, repeats,
     const answering = mode === 'mirrored' ? targets.slice(0, 2) : null;
     for (let k = 0; k < tracks; k++) {
       const who = answering ?? [targets[k]];
-      for (const tg of who) assistantUsd += convs * per(tg.price, tutorIn(t), T.tutorOut);
-      userUsd += convs * per(user.price, tutorIn(t) / 2 + 200, T.userOut);
-      if (mode === 'mirrored') judgeUsd += convs * 2 * per(judge.price, tutorIn(t) + 2 * T.tutorOut + 300, 60); // both orders
+      for (const tg of who) assistantUsd += convs * per(tg.price, tutorIn(t), T.tutorOut + think(tg));
+      if (t < turns - 1) userUsd += convs * per(user.price, tutorIn(t) / 2 + 200, T.userOut + think(user));
+      if (mode === 'mirrored') judgeUsd += convs * 2 * per(judge.price, tutorIn(t) + 2 * T.tutorOut + 300, T.pairOut + think(judge)); // both orders
     }
   }
   const transcriptIn = turns * T.turnTokens * 2 + 600;
-  if (rubric) judgeUsd += convs * tracks * per(judge.price, transcriptIn, T.judgeOut);
-  if (mode === 'independent' && targets.length >= 2) judgeUsd += convs * 2 * per(judge.price, transcriptIn * 2, 80);
-  const m = 1.3;
+  if (rubric) judgeUsd += convs * tracks * per(judge.price, transcriptIn, T.judgeOut + think(judge));
+  if (mode === 'independent' && targets.length >= 2) judgeUsd += convs * 2 * per(judge.price, transcriptIn * 2, T.pairOut + think(judge));
+  const m = 1.15;
   return { assistantUsd: assistantUsd * m, userUsd: userUsd * m, judgeUsd: judgeUsd * m, totalUsd: (assistantUsd + userUsd + judgeUsd) * m };
 }

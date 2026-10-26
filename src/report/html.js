@@ -5,6 +5,7 @@
 import { METRIC_BETTER, metricScore } from '../run.js';
 import { GLOSSARY, info, popovers, glossarySection } from './glossary.js';
 import { winShareChart, pairBars, lengthStrip, splitBar, legend, TOOLTIP_SCRIPT } from './charts.js';
+import { byCase, findings, markdownToHtml } from '../analysis.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
@@ -71,7 +72,7 @@ function valueLine(v, L, mock) {
 }
 
 /** The bottom line at the top of the report. */
-function verdictBox(v, L, meta, better) {
+function verdictBox(v, L, meta, better, chart = '') {
   if (!v) return '';
   const head = v.strength === 'clear' ? `Winner: ${L(v.leader)}`
     : v.strength === 'leaning' ? `Leaning: ${L(v.leader)}, but not conclusive yet`
@@ -90,7 +91,7 @@ function verdictBox(v, L, meta, better) {
   if (mw(v.other).length) lines.push(`${L(v.other)} is better on ${mw(v.other).join(', ')}.`);
   const c = v.checks;
   if (c[v.leader].total || c[v.other].total) lines.push(`Case checks ${info('checks')} passed: ${L(v.leader)} ${c[v.leader].passed}/${c[v.leader].total}, ${L(v.other)} ${c[v.other].passed}/${c[v.other].total}.`);
-  return `<section class="verdict ${v.strength}"><h2>${head} ${info('verdict')}</h2><p>${why}</p>${valueLine(v, L, meta.mock)}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+  return `<section class="verdict ${v.strength}"><h2>${head} ${info('verdict')}</h2><p>${why}</p>${chart ? `<div class="v-chart">${chart}</div>` : ''}${valueLine(v, L, meta.mock)}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
   <p class="muted small">The headline comes from the pairwise judge, the most direct comparison; the rest is supporting evidence. Turns within one conversation aren't fully independent, so treat the interval as approximate.${meta.mock ? ' <b>Mock run: these results are placeholders.</b>' : ''}</p></section>`;
 }
 
@@ -215,6 +216,38 @@ export function renderReport(results) {
   <tr><th>Typical response time (median)</th>${bestCells(ids.map((id) => cost[id]?.latencyMedianMs ?? null), -1, sec)}</tr>
   <tr><th>Slow-end response time (90th percentile)</th>${bestCells(ids.map((id) => cost[id]?.latencyP90Ms ?? null), -1, sec)}</tr></table></details>`;
 
+  // ---- the verdict's chart: the overall head-to-head split ----
+  let verdictChart = '';
+  if (cmp && two) {
+    const all = shareRows(meta, conversations, results, label)[0];
+    verdictChart = winShareChart([{ ...all, label: meta.mode === 'mirrored' ? 'Head to head, all turns' : 'Head to head, whole conversations' }], names);
+  }
+
+  // ---- findings ----
+  const F = two ? findings(results) : [];
+  const findingsHtml = F.length ? `<h2>Findings ${info('findings')}</h2><ul class="findings">${F.map((f) => `<li class="f-${f.kind}">${esc(f.text)}</li>`).join('')}</ul>` : '';
+
+  // ---- by case ----
+  let caseHtml = '';
+  const BC = two ? byCase(results) : [];
+  if (BC.some((c) => c.share)) {
+    const title = (id) => (meta.caseInfo ?? []).find((x) => x.id === id)?.title ?? id;
+    const lead = summary.verdict?.leader;
+    const rows = BC.filter((c) => c.share).map((c) => ({ label: title(c.case), ...c.share }));
+    const table = `<table><tr><th>Case</th>${ids.map((id) => `<th>${L(id)}: rubric</th>`).join('')}${ids.map((id) => `<th>${L(id)}: failed checks</th>`).join('')}</tr>
+      ${BC.map((c) => `<tr><th>${esc(title(c.case))}</th>${bestCells(ids.map((id) => c.per[id]?.rubric ?? null), 1, (x) => num(x))}${ids.map((id) => `<td>${c.per[id]?.failed.length ? `<span class="fail">${c.per[id].failed.map((k) => esc(k.id)).join(', ')}</span>` : c.per[id]?.checks ? '<span class="pass">none</span>' : '–'}</td>`).join('')}</tr>`).join('')}</table>`;
+    const flagged = BC.filter((c) => {
+      if (!c.share || !lead) return false;
+      const ls = lead === ids[0] ? c.share.a : c.share.b;
+      const os = lead === ids[0] ? c.share.b : c.share.a;
+      return os > ls;
+    }).map((c) => title(c.case));
+    caseHtml = `<h2>By case ${info('byCase')}</h2>
+    <p class="lead">Who won each case, turn by turn.${flagged.length ? ` <b>${L(summary.verdict.other)} won ${flagged.length === 1 ? 'one case' : `${flagged.length} cases`}</b> despite the overall result: ${flagged.map((t) => esc(t)).join(', ')}.` : ''}</p>
+    ${winShareChart(rows, names)}
+    <details class="tv"><summary>Rubric and checks by case</summary>${table}</details>`;
+  }
+
   // ---- conversations ----
   const convHtml = conversations.map((c, i) => {
     const turns = c.history.map((h) => {
@@ -240,15 +273,15 @@ export function renderReport(results) {
   }).join('');
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(meta.suite.title)}: ${esc(meta.mode)} run</title>
+<title>Eval report: ${esc(meta.suite.title)}</title>
 <style>
 :root{color-scheme:light;--bg:#f9f9f7;--fg:#0b0b0b;--fg2:#52514e;--muted:#6a6964;--card:#fcfcfb;--line:#e1e0d9;--axis:#c3c2b7;--ok:#006300;--bad:#b42318;--accent:#1c5cab;
-  --s1:#2a78d6;--s2:#eb6834;--tie:#c3c2b7;--r1:#1baf7a;--r2:#eda100;--r3:#e87ba4;--s1w:#eaf2fc;--s2w:#fdeee7;--u:#f1f0ec;--band:#1baf7a22}
+  --s1:#2a78d6;--s2:#00873c;--tie:#c3c2b7;--r1:#1baf7a;--r2:#eda100;--r3:#e87ba4;--s1w:#eaf2fc;--s2w:#e5f3ea;--u:#f1f0ec;--band:#1baf7a22}
 @media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0d0d0d;--fg:#f0efec;--fg2:#c3c2b7;--muted:#a3a29b;--card:#1a1a19;--line:#2c2c2a;--axis:#383835;--ok:#0ca30c;--bad:#ff8a80;--accent:#7fb0ef;
-  --s1:#3987e5;--s2:#d95926;--tie:#5b5a55;--r1:#199e70;--r2:#c98500;--r3:#d55181;--s1w:#18263a;--s2w:#33211a;--u:#262624;--band:#199e7033}}
+  --s1:#3987e5;--s2:#00873c;--tie:#5b5a55;--r1:#199e70;--r2:#c98500;--r3:#d55181;--s1w:#18263a;--s2w:#13281b;--u:#262624;--band:#199e7033}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1000px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:1.45rem;margin:0 0 4px}h2{font-size:1.15rem;margin:34px 0 6px}h3{font-size:1rem;margin:18px 0 6px}
+h1{font-size:1.5rem;margin:0}.subhead{font-size:1.1rem;color:var(--accent);margin:2px 0 8px;font-weight:500}h2{font-size:1.15rem;margin:34px 0 6px}h3{font-size:1rem;margin:18px 0 6px}
 .muted{color:var(--muted)}.small{font-size:.85rem}.lead{color:var(--fg2);margin:0 0 10px}
 .banner{border:2px solid var(--bad);color:var(--bad);border-radius:10px;padding:8px 12px;margin:12px 0}
 table{border-collapse:collapse;width:100%;margin:8px 0;background:var(--card)}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
@@ -256,6 +289,8 @@ td{font-variant-numeric:tabular-nums}td.best{font-weight:700}.dir{display:block;
 .verdict{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--muted);border-radius:10px;padding:4px 18px 8px;margin:16px 0}
 .verdict.clear{border-left-color:var(--ok)}.verdict.leaning{border-left-color:var(--accent)}.verdict h2{margin:12px 0 4px;font-size:1.3rem}.verdict ul{margin:4px 0 8px;padding-left:20px}
 .value{margin:6px 0}
+.notes{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:2px 18px 10px;margin:16px 0}.notes h2{margin-top:12px}.notes h3,.notes h4{margin:14px 0 4px}.notes ul{padding-left:20px}
+ul.findings{padding-left:20px}ul.findings li{margin:4px 0}ul.findings li.f-case,ul.findings li.f-check{color:var(--fg)}ul.findings li.f-case::marker,ul.findings li.f-check::marker{color:var(--bad)}
 .tcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 14px 10px}
 .tcard h3{display:flex;align-items:center;gap:8px}.sw{display:inline-block;width:12px;height:12px;border-radius:3px}
 pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.82rem}
@@ -286,17 +321,26 @@ details.conv{background:var(--card);border:1px solid var(--line);border-radius:1
 .glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.glossary section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 14px 10px}.glossary h3{margin:8px 0 0}
 #tip{position:fixed;z-index:10;pointer-events:none;background:var(--fg);color:var(--bg);font-size:.8rem;padding:4px 8px;border-radius:6px;max-width:320px}
 ul.cases{padding-left:20px}ul.cases li{margin:3px 0}
+details.cases-d{margin:14px 0}details.cases-d>summary{color:var(--fg)}
+.v-chart{margin:8px 0 4px}.v-chart .legend{margin-top:0}
+.clamp{position:relative;max-height:330px;overflow:hidden}.clamp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(to bottom,transparent,var(--card));pointer-events:none}
+.clamp.open{max-height:none}.clamp.open::after{display:none}
+.more{border:1px solid var(--line);background:var(--bg);color:var(--accent);border-radius:8px;padding:4px 12px;margin:6px 0 4px;cursor:pointer;font:inherit;font-size:.88rem}
 </style></head><body><main>
-<h1>${esc(meta.suite.title)}</h1>
+<h1>Multi-Turn LLM Eval Harness</h1>
+<p class="subhead">Report: ${esc(meta.suite.title)}</p>
 <p class="muted small">${esc(meta.mode)} mode ${meta.mode === 'mirrored' ? info('mirrored') : ''} · ${meta.cases.length} case(s) × ${meta.repeats} repeat(s) × ${meta.turns} turns · judge: ${esc(meta.judge.vendor)} ${esc(meta.judge.model ?? '')} · simulated user ${info('simulatedUser')}: ${esc(meta.user.vendor)} ${esc(meta.user.model ?? '')} · ${esc(meta.startedAt)} · <a href="#glossary">Glossary</a></p>
 ${meta.mock ? '<div class="banner"><b>Mock run.</b> No model was called: these numbers only demonstrate the report format.</div>' : ''}
 ${results.partial ? `<div class="banner"><b>Partial run:</b> ${esc(results.stopReason)}. Results so far are kept.</div>` : ''}
-${verdictBox(summary.verdict, L, meta, better)}
+${verdictBox(summary.verdict, L, meta, better, verdictChart)}
+${meta.notes ? `<section class="notes"><h2>Analysis and recommendations ${info('analysis')}</h2><div class="clamp" id="notes-body">${markdownToHtml(meta.notes)}</div><button type="button" class="more" data-clamp="notes-body" aria-expanded="false">More…</button></section>` : ''}
+${findingsHtml}
 <h2>What was compared ${info('target')}</h2>
 ${meta.suite.description ? `<p class="lead">${esc(meta.suite.description)}</p>` : ''}
 <div class="tcards">${targetCards}</div>
-${caseList ? `<h3>Cases ${info('case')}</h3><ul class="cases">${caseList}</ul>` : ''}
+${caseList ? `<details class="cases-d"><summary><b>Cases (${(meta.caseInfo ?? []).length})</b> <span class="muted small">what each one tests</span></summary><ul class="cases">${caseList}</ul></details>` : ''}
 ${h2h}
+${caseHtml}
 ${lengths}
 ${metrics}
 ${rubric}

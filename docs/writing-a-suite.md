@@ -143,7 +143,7 @@ node src/cli.js run --suite suites/my-product --targets my-targets.json --cases 
 node src/cli.js run --suite suites/my-product --targets my-targets.json
 ```
 
-**Read the transcripts of the first real run before trusting any numbers.** Check that the simulated user behaves like your users and that you agree with the judge's reasons. If the judge's verdicts often flip when the order is swapped (low position consistency in the report), sharpen the rubric descriptions and the pairwise question.
+**Read the transcripts of the first real run before trusting any numbers.** If a case check turns out to be too broad or too narrow, fix it in the suite and re-score the saved run for free with `node src/cli.js report <results.json> --suite <suite folder>`; no model calls are repeated. Check that the simulated user behaves like your users and that you agree with the judge's reasons. If the judge's verdicts often flip when the order is swapped (low position consistency in the report), sharpen the rubric descriptions and the pairwise question.
 
 ## Tips
 

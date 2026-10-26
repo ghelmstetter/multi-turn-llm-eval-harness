@@ -14,7 +14,17 @@ It runs a model (or a prompt) through complete conversations with a **scripted s
 
 To evaluate a real product, you keep a suite next to that product, in the product's own (possibly private) repo, and have it send the model exactly what the product sends: the real system prompt and persona, plus whatever context the product adds, such as a lesson plan or what it remembers about the user. Every prompt or model change can then be checked against the same cases before it ships, and the results describe the product as its users will experience it. In v0.1 a suite's prompts are fixed text; letting a suite build them with the product's own code is next on the [roadmap](#roadmap).
 
-> **Status: v0.1, built October 2026.** The engine, both comparison modes, the graders, cost controls, the report and the tests are working. First published results are coming next; see [Roadmap](#roadmap).
+> **Status: v0.1, built October 2026.** The engine, both comparison modes, the graders, cost controls, the report and the tests are working, with a first real run below.
+
+## First results: a prompt change that helped, and the regression it hid
+
+The first real run compared Gemini Flash with a plain tutor prompt against the same model with a "coached" prompt (rules for short turns, simple Spanish, gentle corrections and honest praise), across all 7 tutor cases in mirrored mode: 84 head-to-head turns, $0.76.
+
+- **The coached prompt did what it was written to do.** Replies got about 60% shorter (median 22 words vs. 58), monologues disappeared, English fell from 72% to 27% (inside the 10–40% target), and the learner's share of the talking doubled. The rubric judge agreed (4.7 vs. 4.2 out of 5), at the same cost per reply.
+- **But the head-to-head verdict was only "leaning"** (55% of turns, 95% interval 45–66%), and the per-case breakdown showed why: the coached prompt **lost three cases** where a beginner needed patience. When a nervous learner asked to switch to English, it gave up on Spanish entirely ("We can just chat in English"); pushed toward more Spanish, it used past tenses a beginner hasn't learned; and it skipped corrections it should have made.
+
+An average-only evaluation would have shipped this prompt as a clear improvement. The multi-turn cases caught the regression, and the report's analysis turns it into specific prompt changes to test next. **[Read the analysis](docs/sample-report/notes.md)** or download the **[full report](docs/sample-report/report.html)** (open it in a browser).
+
 
 ---
 
@@ -91,7 +101,7 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 15 tests, no keys needed
+npm test        # 16 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
@@ -99,11 +109,16 @@ The demo writes `results/demo/report.html`, a single file that opens in any brow
 
 ### Reading the report
 
-- **The verdict comes first:** which target won, how sure that is, and at what cost. "How sure" is a 95% interval on the head-to-head win rate, so "too close to call" is a possible answer. Below it, the report says whether the rubric judge, the code metrics and the case checks agree.
+- **The verdict comes first:** which target won, how sure that is, and at what cost.
+- **Analysis and findings:** automatic findings (the biggest differences, cases where the overall loser won, failed checks), plus optional analysis and recommendations written about the run (`report --notes`). "How sure" is a 95% interval on the head-to-head win rate, so "too close to call" is a possible answer. Below it, the report says whether the rubric judge, the code metrics and the case checks agree.
 - **What was compared:** each target's description and its full prompt, and each case's goal.
 - **Charts for each kind of evidence:** head-to-head win shares (split by whose conversation was being continued), every reply's length as a dot against the monologue limit, the code metrics and rubric scores side by side, cost, and response time. Every chart has a "Show as a table" view, and hovering a mark shows its exact value.
 - **Every conversation in full,** with each reply's word count, the shadow answer and the judge's two reasons at every turn, and the rubric's reason for every score.
 - **Every term explained:** each ⓘ button opens what the term is, how to read it and why it matters, and a glossary at the end collects them all.
+
+### Re-scoring and analysis notes
+
+Saved runs can be re-scored for free: after fixing a case check or changing a metric, `node src/cli.js report results/<run>/results.json --suite suites/tutor-es` re-runs the code graders on the saved transcripts (the judges' verdicts are kept) and rebuilds the report. Adding `--notes my-analysis.md` puts a written analysis and recommendations at the top of the report, next to the evidence.
 
 ### Cost, speed and value
 
@@ -165,7 +180,7 @@ Repeats, mirrored runs and judge calls multiply cost quickly, so:
 - If a cap is reached mid-run, the run **stops cleanly** and keeps its results so far, marked partial.
 - The report breaks spending down by role: models under test, simulated user, judge.
 
-The full example suite in mirrored mode (7 cases × 6 turns, two targets, rubric on) is estimated at about $0.60 with Gemini Flash pricing.
+The full example suite in mirrored mode (7 cases × 6 turns, two targets, rubric on) cost **$0.76** in a real run with Gemini Flash (404 model calls); the estimate shows about $0.90. Reasoning models like Gemini Flash spend a few hundred hidden "thinking" tokens per call, billed as output, so the estimate includes them (`thinkingTokens` per model in the targets file; 0 for models that don't think).
 
 ---
 
@@ -240,7 +255,7 @@ test/                 tests (node --test), no network or keys needed
 ## Roadmap
 
 - **Suites that build prompts with code**, so a product's eval suite can import the product's own prompt assembly and always test exactly what ships.
-- **Published results** for the example suite: plain vs. coached prompt, and model comparisons across vendors.
+- **More results:** the recommended prompt fixes re-tested with repeats, and model comparisons across vendors with a third-vendor judge.
 - **Blind human rating:** shuffled, anonymized transcripts, plus judge-vs-human agreement.
 - **Voice spot checks:** play the simulated user through text-to-speech, since speech-to-speech models can behave differently in voice than in text.
 - **Memory across sessions:** whether an assistant recalls earlier conversations and keeps its own story consistent. Generic eval tools rarely test this.
