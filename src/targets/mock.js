@@ -34,7 +34,7 @@ function mockRubric({ messages, criteria = [], assistantLabel = 'ASSISTANT' }) {
   const tutorTurns = prompt.split('\n').filter((l) => l.startsWith(`${assistantLabel}: `));
   const avg = tutorTurns.reduce((s, t) => s + words(t), 0) / Math.max(1, tutorTurns.length);
   const short = avg <= 25;
-  const scores = Object.fromEntries(criteria.map((c) => [c.id, { score: c.id === 'turn_length' ? (short ? 5 : 2) : short ? 4 : 3, why: `mock judge: average tutor turn ${avg.toFixed(0)} words` }]));
+  const scores = Object.fromEntries(criteria.map((c) => [c.id, { score: c.id === 'turn_length' ? (short ? 5 : 2) : short ? 4 : 3, why: `mock judge: average reply ${avg.toFixed(0)} words` }]));
   return JSON.stringify({ scores, summary: 'Mock judgment (no model was called).' });
 }
 
@@ -52,5 +52,8 @@ function mockPairwise({ messages }) {
 export async function mockChat(req) {
   const text = { assistant: mockAssistant, user: mockUser, rubric: mockRubric, pairwise: mockPairwise }[req.purpose ?? 'assistant'](req);
   const input = Math.ceil((String(req.system ?? '').length + req.messages.reduce((s, m) => s + m.text.length, 0)) / 4);
-  return { text, usage: { input, output: Math.ceil(text.length / 4) } };
+  const output = Math.ceil(text.length / 4);
+  // A made-up response time (a fixed start plus time per output token), so reports can show
+  // latency in mock runs too. No real waiting happens.
+  return { text, usage: { input, output }, simulatedMs: 350 + output * 12 };
 }

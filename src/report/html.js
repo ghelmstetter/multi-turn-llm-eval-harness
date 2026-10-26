@@ -13,10 +13,10 @@ const usd = (x) => (x == null ? '–' : `$${x > 0 && x < 0.01 ? x.toFixed(4) : x
 const signed = (x) => (x == null ? '–' : `${x > 0 ? '+' : ''}${Math.round(x * 100)} pts`);
 const words = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
 
-const metricName = (m, rule) => ({
+const metricName = (m, rule, roles = {}) => ({
   wordsMedian: 'shorter turns', wordsP90: 'fewer long turns', monologues: 'fewer monologues', stackedQuestions: 'fewer stacked questions',
   nativeShare: Array.isArray(rule) ? `English share closer to ${pct(rule[0])}–${pct(rule[1])}` : rule > 0 ? 'more English' : 'less English',
-  aboveLevelShare: 'fewer words above level', userTalkShare: 'more learner talk',
+  aboveLevelShare: 'fewer words above level', userTalkShare: `more ${roles.user ?? 'user'} talk`,
 }[m] ?? m);
 const ruleText = (rule) => (Array.isArray(rule) ? `best between ${pct(rule[0])} and ${pct(rule[1])}` : rule > 0 ? 'higher is better' : 'lower is better');
 
@@ -25,10 +25,17 @@ const METRICS = [
   ['wordsP90', '90th-percentile words per turn', (x) => num(x, 0)],
   ['monologues', 'Monologues per conversation', (x) => num(x, 1)],
   ['stackedQuestions', 'Turns with 2+ questions', (x) => num(x, 1)],
-  ['nativeShare', 'English share', pct],
-  ['aboveLevelShare', 'Words above the learner\'s level', pct],
-  ['userTalkShare', 'Learner\'s share of the talking', pct],
+  ['nativeShare', 'Native-language share', pct],
+  ['aboveLevelShare', 'Words above the user\'s level', pct],
+  ['userTalkShare', 'User\'s share of the talking', pct],
 ];
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/** The metrics this suite uses, with names in its own terms (e.g. "learner", "English"). */
+function metricsFor(meta, better) {
+  const user = meta.roleNames?.user ?? 'user';
+  const native = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese' }[meta.suite.metrics?.native] ?? 'native-language';
+  return METRICS.filter(([k]) => k in better).map(([k, name, f]) => [k, name.replace('Native-language', native).replace("user's", `${user}'s`).replace("User's", `${cap(user)}'s`), f]);
+}
 
 /** Bold the better value in a row (rule: -1 lower is better, 1 higher, or a [low, high] range). */
 function bestCells(values, rule, fmt) {
@@ -55,7 +62,12 @@ function valueLine(v, L, mock) {
     'tie-leader-cheaper': `Quality is about even, so the cheaper one is the better value: ${L(v.leader)} (${per}).`,
     'tie-other-cheaper': `Quality is about even, so the cheaper one is the better value: ${L(v.other)} (${b} vs ${a} per 1,000 replies).`,
   }[val.kind];
-  return `<p class="value"><b>Cost:</b> ${text} ${info('qualityPerDollar')}${mock ? ' <span class="muted small">(from mock token counts at the configured prices)</span>' : ''}</p>`;
+  const sp = val.speed;
+  const fmtS = (ms) => `${(ms / 1000).toFixed(1)} s`;
+  const speed = !sp ? '' : Math.abs(sp.diff) < 0.1
+    ? `<p class="value"><b>Speed:</b> about the same (typical reply ${fmtS(sp.leaderMs)} vs ${fmtS(sp.otherMs)}). ${info('latency')}</p>`
+    : `<p class="value"><b>Speed:</b> ${L(v.leader)} is <b>${Math.round(Math.abs(sp.diff) * 100)}% ${sp.diff < 0 ? 'faster' : 'slower'}</b> (typical reply ${fmtS(sp.leaderMs)} vs ${fmtS(sp.otherMs)}). ${info('latency')}</p>`;
+  return `<p class="value"><b>Cost:</b> ${text} ${info('qualityPerDollar')}${mock ? ' <span class="muted small">(from mock token counts at the configured prices)</span>' : ''}</p>${speed}${mock && sp ? '<p class="muted small">Mock response times are simulated from reply length.</p>' : ''}`;
 }
 
 /** The bottom line at the top of the report. */
@@ -73,7 +85,7 @@ function verdictBox(v, L, meta, better) {
     const agree = v.rubricLead == null ? 'about even' : v.rubricLead === v.leader ? 'agrees' : `<b>disagrees</b> (favors ${L(v.other)})`;
     lines.push(`Rubric judge ${info('rubric')}: ${num(v.rubric[v.leader])} vs ${num(v.rubric[v.other])} out of 5, ${agree}.`);
   }
-  const mw = (id) => v.metricWins[id].map((m) => metricName(m, better[m]));
+  const mw = (id) => v.metricWins[id].map((m) => metricName(m, better[m], meta.roleNames));
   if (mw(v.leader).length) lines.push(`${L(v.leader)} is better on ${mw(v.leader).join(', ')}.`);
   if (mw(v.other).length) lines.push(`${L(v.other)} is better on ${mw(v.other).join(', ')}.`);
   const c = v.checks;
@@ -113,7 +125,7 @@ export function renderReport(results) {
 
   // ---- what was compared ----
   const targetCards = meta.targets.map((t, i) => `<div class="tcard"><h3><i class="sw" style="background:var(--s${i + 1})"></i>${esc(t.label ?? t.id)}</h3>
-    ${t.description ? `<p>${esc(t.description)}</p>` : ''}
+    ${t.description || meta.promptNotes?.[t.prompt] ? `<p>${esc([t.description, meta.promptNotes?.[t.prompt]].filter(Boolean).join(' '))}</p>` : ''}
     <p class="muted small">${esc(t.vendor)} / ${esc(t.model ?? '')} · prompt variant ${info('promptVariant')} "${esc(t.prompt ?? '')}"${t.temperature != null ? ` · temperature ${t.temperature}` : ''}${t.price ? ` · $${t.price.input} / $${t.price.output} per 1M input / output tokens` : ''}</p>
     ${meta.prompts?.[t.prompt] ? `<details><summary class="small">See the full prompt</summary><pre>${esc(meta.prompts[t.prompt])}</pre></details>` : ''}</div>`).join('');
   const caseList = (meta.caseInfo ?? []).map((c) => `<li><b>${esc(c.title)}</b> <span class="muted">(${esc(c.id)})</span>: ${esc(c.goal)}</li>`).join('');
@@ -156,13 +168,14 @@ export function renderReport(results) {
   ${legend(ids.map((id, i) => ({ label: label[id], color: `--s${i + 1}` })))}${lengthStrip(ids.map(lengthsOf), names, limit)}`;
 
   // ---- code metrics ----
-  const metricCharts = METRICS.map(([k, name, f]) => {
+  const M = metricsFor(meta, better);
+  const metricCharts = M.map(([k, name, f]) => {
     const vals = ids.map((id) => S[id]?.metrics?.[k] ?? null);
     const rule = better[k];
     const isShare = f === pct;
     return pairBars(`${esc(name)} ${info(k)}<span class="dir">${ruleText(rule)}</span>`, vals, names, { fmt: (x) => f(x), max: isShare ? 1 : undefined, range: Array.isArray(rule) ? rule : null });
   }).join('');
-  const metricTable = `<table><tr><th></th>${ids.map((id) => `<th>${L(id)}</th>`).join('')}</tr>${METRICS.map(([k, name, f]) => `<tr><th>${esc(name)}<span class="dir">${ruleText(better[k])}</span></th>${bestCells(ids.map((id) => S[id]?.metrics?.[k] ?? null), better[k], f)}</tr>`).join('')}
+  const metricTable = `<table><tr><th></th>${ids.map((id) => `<th>${L(id)}</th>`).join('')}</tr>${M.map(([k, name, f]) => `<tr><th>${esc(name)}<span class="dir">${ruleText(better[k])}</span></th>${bestCells(ids.map((id) => S[id]?.metrics?.[k] ?? null), better[k], f)}</tr>`).join('')}
   <tr><th>Case checks passed ${info('checks')}</th>${ids.map((id) => `<td>${S[id].checksPassed} / ${S[id].checksTotal}</td>`).join('')}</tr></table>`;
   const metrics = `<h2>Measured in code</h2><p class="lead">Free, deterministic measurements of every conversation, averaged over each target's own conversations.</p>
   ${legend(ids.map((id, i) => ({ label: label[id], color: `--s${i + 1}` })))}<div class="grid">${metricCharts}</div>
@@ -183,11 +196,14 @@ export function renderReport(results) {
   const cost = summary.cost ?? {};
   const costVals = ids.map((id) => cost[id]?.perThousandUsd ?? null);
   const b = meta.budget;
-  const costSection = `<h2>Cost and value ${info('qualityPerDollar')}</h2>
+  const sec = (ms) => (ms == null ? '–' : `${(ms / 1000).toFixed(1)} s`);
+  const costSection = `<h2>Cost, speed and value ${info('qualityPerDollar')}</h2>
   ${valueLine(summary.verdict, L, meta.mock) || ''}
   ${legend(ids.map((id, i) => ({ label: label[id], color: `--s${i + 1}` })))}
   <div class="grid">${pairBars(`Cost per 1,000 replies ${info('costPerThousand')}<span class="dir">lower is better</span>`, costVals, names, { fmt: (x) => usd(x) })}
-  ${pairBars('Tokens per reply, input <span class="dir">the prompt and conversation so far</span>', ids.map((id) => cost[id]?.inputPerReply ?? null), names, { fmt: (x) => num(x, 0) })}</div>
+  ${pairBars('Tokens per reply, input <span class="dir">the prompt and conversation so far</span>', ids.map((id) => cost[id]?.inputPerReply ?? null), names, { fmt: (x) => num(x, 0) })}
+  ${pairBars(`Typical response time ${info('latency')}<span class="dir">median; lower is better</span>`, ids.map((id) => cost[id]?.latencyMedianMs ?? null), names, { fmt: sec })}
+  ${pairBars(`Slow-end response time ${info('latency')}<span class="dir">90th percentile; lower is better</span>`, ids.map((id) => cost[id]?.latencyP90Ms ?? null), names, { fmt: sec })}</div>
   <h3>What this evaluation cost ${info('evalSpend')}</h3>
   ${splitBar([{ label: 'Targets\' replies', value: b.byRole.assistant ?? 0, color: '--r1' }, { label: 'Simulated user', value: b.byRole.user ?? 0, color: '--r2' }, { label: 'Judge', value: b.byRole.judge ?? 0, color: '--r3' }], usd)}
   <p class="small muted">${usd(b.spentUsd)} in total over ${b.calls} model calls. Caps: ${usd(b.runCapUsd)} per run, ${usd(b.dailyCapUsd)} per day.</p>
@@ -195,7 +211,9 @@ export function renderReport(results) {
   <tr><th>Replies</th>${ids.map((id) => `<td>${cost[id]?.replies ?? '–'}</td>`).join('')}</tr>
   <tr><th>Cost per 1,000 replies</th>${bestCells(costVals, -1, usd)}</tr>
   <tr><th>Input tokens per reply</th>${ids.map((id) => `<td>${num(cost[id]?.inputPerReply, 0)}</td>`).join('')}</tr>
-  <tr><th>Output tokens per reply</th>${ids.map((id) => `<td>${num(cost[id]?.outputPerReply, 0)}</td>`).join('')}</tr></table></details>`;
+  <tr><th>Output tokens per reply</th>${ids.map((id) => `<td>${num(cost[id]?.outputPerReply, 0)}</td>`).join('')}</tr>
+  <tr><th>Typical response time (median)</th>${bestCells(ids.map((id) => cost[id]?.latencyMedianMs ?? null), -1, sec)}</tr>
+  <tr><th>Slow-end response time (90th percentile)</th>${bestCells(ids.map((id) => cost[id]?.latencyP90Ms ?? null), -1, sec)}</tr></table></details>`;
 
   // ---- conversations ----
   const convHtml = conversations.map((c, i) => {
@@ -211,7 +229,12 @@ export function renderReport(results) {
     const m = c.metrics ?? {};
     const title = (meta.caseInfo ?? []).find((x) => x.id === c.case)?.title ?? c.case;
     return `<details class="conv"${i === 0 ? ' open' : ''}><summary><b>${esc(title)}</b> · #${c.repeat + 1} · ${meta.mode === 'mirrored' ? `continuing with ${L(c.main)}` : L(c.main)}${c.partial ? ' · <span class="fail">partial</span>' : ''}</summary>
-      <p class="small muted">median ${m.wordsMedian} words per reply · longest ${m.wordsMax} · English ${pct(m.nativeShare)} · above level ${pct(m.aboveLevelShare)}${m.aboveLevelWords?.length ? ` (${esc(m.aboveLevelWords.slice(0, 8).join(', '))})` : ''} · learner talk ${pct(m.userTalkShare)}</p>
+      <p class="small muted">${[
+        `median ${m.wordsMedian} words per reply`, `longest ${m.wordsMax}`,
+        'nativeShare' in better ? `${M.find(([k]) => k === 'nativeShare')?.[1].replace(' share', '')} ${pct(m.nativeShare)}` : null,
+        'aboveLevelShare' in better ? `above level ${pct(m.aboveLevelShare)}${m.aboveLevelWords?.length ? ` (${esc(m.aboveLevelWords.slice(0, 8).join(', '))})` : ''}` : null,
+        'userTalkShare' in better ? `${esc(meta.roleNames?.user ?? 'user')} talk ${pct(m.userTalkShare)}` : null,
+      ].filter(Boolean).join(' · ')}</p>
       ${checks ? `<ul class="checks">${checks}</ul>` : ''}
       <div class="transcript">${turns}</div>${rub}</details>`;
   }).join('');

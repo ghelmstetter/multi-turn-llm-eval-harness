@@ -53,7 +53,7 @@ export function makeTarget(cfg, { fetchImpl = fetch, env = process.env, mock = f
       if (spec.vendor !== 'mock' && !key) throw new Error(`Set ${KEY_ENV[spec.vendor]} to use target ${cfg.id}`);
       const t0 = Date.now();
       const out = await withRetries(() => impl({ ...req, model: spec.model, temperature: spec.temperature, maxTokens: spec.maxTokens, behavior: spec.behavior, key, fetchImpl }), retry);
-      return { ...out, ms: Date.now() - t0 };
+      return { ...out, ms: out.simulatedMs ?? Date.now() - t0 };
     },
   };
 }

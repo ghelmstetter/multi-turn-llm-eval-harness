@@ -144,7 +144,9 @@ export function summarize({ mode, targets, suite, conversations, pairs = [] }) {
       ...Object.fromEntries(ids.map((id) => [id, { winRate: pairs.reduce((s, p) => s + (p.winner === id ? 1 : p.winner === 'tie' ? 0.5 : 0), 0) / pairs.length }])),
     };
   }
-  const better = { ...METRIC_BETTER, ...(suite.metrics?.better ?? {}) };
+  const all = { ...METRIC_BETTER, ...(suite.metrics?.better ?? {}) };
+  const include = suite.metrics?.include ?? Object.keys(METRIC_BETTER);
+  const better = Object.fromEntries(include.filter((k) => k in all).map((k) => [k, all[k]]));
   return { targets: out, comparison, better, verdict: verdict({ mode, targets, comparison, perTarget: out, better }) };
 }
 
@@ -214,7 +216,9 @@ export function costPerTarget(targets, byTarget = {}) {
     const b = byTarget[t.id];
     if (!b?.replies) return [t.id, null];
     const usd = costOf(t.listPrice ?? t.price, { input: b.inputTokens, output: b.outputTokens });
-    return [t.id, { replies: b.replies, perThousandUsd: (usd / b.replies) * 1000, inputPerReply: b.inputTokens / b.replies, outputPerReply: b.outputTokens / b.replies }];
+    const ms = [...(b.ms ?? [])].sort((x, y) => x - y);
+    const q = (p) => (ms.length ? ms[Math.round(p * (ms.length - 1))] : null);
+    return [t.id, { replies: b.replies, perThousandUsd: (usd / b.replies) * 1000, inputPerReply: b.inputTokens / b.replies, outputPerReply: b.outputTokens / b.replies, latencyMedianMs: q(0.5), latencyP90Ms: q(0.9) }];
   }));
 }
 
@@ -231,5 +235,8 @@ export function valueOf(v, cost) {
   const same = Math.abs(diff) < 0.03;
   const kind = v.strength === 'tie' ? (same ? 'tie-same' : a < b ? 'tie-leader-cheaper' : 'tie-other-cheaper')
     : same ? 'better-same' : a < b ? 'better-cheaper' : 'better-pricier';
-  return { kind, diff, leaderPerThousand: a, otherPerThousand: b };
+  const la = cost[v.leader].latencyMedianMs;
+  const lb = cost[v.other].latencyMedianMs;
+  const speed = la == null || lb == null || !lb ? null : { leaderMs: la, otherMs: lb, diff: (la - lb) / lb };
+  return { kind, diff, leaderPerThousand: a, otherPerThousand: b, speed };
 }

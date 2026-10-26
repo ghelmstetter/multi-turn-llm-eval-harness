@@ -70,7 +70,7 @@ export const GLOSSARY = {
   },
   simulatedUser: {
     term: 'Simulated user',
-    what: 'A model role-playing the person talking to the target (here, a beginner Spanish learner), following a case\'s script.',
+    what: 'A model role-playing the person talking to the target (for the tutor suite, a beginner Spanish learner; for a support suite, a customer), following a case\'s script.',
     means: 'It reacts naturally between scripted moments, so each conversation is realistic but comparable.',
     why: 'Real users can\'t be replayed on demand. A simulated user lets every change be tested against the same situations.',
   },
@@ -101,7 +101,7 @@ export const GLOSSARY = {
   wordsMedian: {
     term: 'Median words per turn',
     what: 'The typical length of the target\'s turns, in words (half are shorter, half longer).',
-    means: 'For a conversational tutor, lower is better: short turns, often a single question.',
+    means: 'Usually lower is better: conversational replies should be short, often a single question.',
     why: 'Long turns are the most common failure of conversational models, and they hurt most in voice, where a listener can\'t skim.',
   },
   wordsP90: {
@@ -112,32 +112,32 @@ export const GLOSSARY = {
   },
   monologues: {
     term: 'Monologues',
-    what: 'Turns longer than the suite\'s limit (here, 50 words: roughly 20 seconds of speech).',
+    what: 'Turns longer than the suite\'s word limit (the tutor suite uses 50 words: roughly 20 seconds of speech).',
     means: 'Counted per conversation. Lower is better.',
-    why: 'A monologue takes the conversation away from the learner, who should be doing most of the talking.',
+    why: 'A monologue takes the conversation away from the user and buries the one thing they needed.',
   },
   stackedQuestions: {
     term: 'Turns with 2+ questions',
     what: 'Turns that ask more than one question at once.',
     means: 'Counted per conversation. Lower is better.',
-    why: 'Stacked questions overwhelm a beginner, who usually answers only the last one.',
+    why: 'Stacked questions overwhelm people, who usually answer only the last one.',
   },
   nativeShare: {
-    term: 'English share',
-    what: 'The share of the target\'s function words (the, and, is…) that are English rather than Spanish.',
-    means: 'For this beginner, the suite sets a target range of 10–40%: mostly Spanish, with English for support. Zero isn\'t ideal either.',
-    why: 'Too much English and the learner doesn\'t practice; none at all and a beginner gets lost.',
+    term: 'Native-language share',
+    what: 'For language-learning suites: the share of the target\'s function words (the, and, is…) in the learner\'s native language rather than the language being learned.',
+    means: 'The tutor suite sets a target range of 10–40% English: mostly Spanish, with English for support. Zero isn\'t ideal either.',
+    why: 'Too much native language and the learner doesn\'t practice; none at all and a beginner gets lost.',
   },
   aboveLevelShare: {
-    term: 'Words above the learner\'s level',
-    what: 'The share of the target\'s Spanish words that fall outside the 2,000 most common Spanish words.',
+    term: 'Words above the user\'s level',
+    what: 'For language-learning suites: the share of the target\'s Spanish words outside the most common ones (the tutor suite uses the top 2,000).',
     means: 'Lower is better for a beginner. The words themselves are listed under each conversation.',
     why: 'Vocabulary a beginner doesn\'t know makes the conversation incomprehensible, however friendly it is.',
   },
   userTalkShare: {
-    term: 'Learner\'s share of the talking',
-    what: 'The learner\'s words as a share of all the words in the conversation.',
-    means: 'Higher is better: the learner should be practicing, not listening to a lecture.',
+    term: 'User\'s share of the talking',
+    what: 'The user\'s words as a share of all the words in the conversation.',
+    means: 'For a tutor, higher is better: the learner should be practicing, not listening to a lecture. Other suites may not use this metric.',
     why: 'Speaking practice is the point of a conversation tutor.',
   },
   costPerThousand: {
@@ -145,6 +145,12 @@ export const GLOSSARY = {
     what: 'What the target\'s own replies cost, scaled to 1,000 replies, from their tokens at the configured price.',
     means: 'Prompt variants on the same model differ mainly through prompt length (a longer prompt costs more on every turn) and reply length.',
     why: 'This is the running cost of the product. A better target that costs much more may or may not be worth it; a better and cheaper one is an easy decision.',
+  },
+  latency: {
+    term: 'Response time',
+    what: 'How long the model took to return a complete reply, measured per call: the typical (median) reply and the slow end (90th percentile, which 1 in 10 replies is slower than).',
+    means: 'Lower is better. In mirrored runs both targets are called at the same moment, so they share network conditions. Times include the network round trip and vary with region and load, so compare targets within a run rather than across runs.',
+    why: 'In a conversation, a slow reply breaks the flow, especially in voice. The slow end matters as much as the typical reply, because users remember the long pauses. (This measures the full reply; for streaming or voice products, time to the first word matters too.)',
   },
   evalSpend: {
     term: 'Evaluation spend',

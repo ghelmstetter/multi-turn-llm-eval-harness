@@ -181,3 +181,24 @@ test('verdict: clear / leaning / too close, with a confidence interval and suppo
   assert.equal(v(0.2, 40).leader, 'y', 'the leader can be either target');
   assert.equal(v(0.2, 40).rubricLead, 'x', 'and the rubric can disagree');
 });
+
+test('suite validation explains problems, and both example suites pass', async () => {
+  const { validateSuite } = await import('../src/suite.js');
+  const { readFileSync } = await import('node:fs');
+  const cfg = JSON.parse(readFileSync('examples/targets.json', 'utf8'));
+  for (const s of ['tutor-es', 'support-bikes']) assert.deepEqual(validateSuite(JSON.parse(readFileSync(`suites/${s}/suite.json`, 'utf8')), cfg), [], s);
+  const bad = { id: 'x', title: 't', prompts: { a: 'hi' }, user: {}, rubric: [{ id: 'Tone' }], cases: [{ id: 'c', title: 'T', user: { profile: 'p', beats: [{ turn: 0, say: 'a', do: 'b' }] }, checks: [{ type: 'absent', pattern: '(' }] }] };
+  const errs = validateSuite(bad, cfg).join('\n');
+  for (const re of [/description: required/, /user\.system/, /rubric\[0\]\.id/, /cases\[0\] \(c\)\.goal/, /exactly one of "say"/, /not a valid pattern/, /prompt variant "plain" isn't in this suite/]) assert.match(errs, re);
+});
+
+test('a non-tutor suite runs with its own metrics, and reports latency', async () => {
+  const plan = loadPlan(parseArgs(['--suite', 'suites/support-bikes', '--mock', '--cases', 'late-return,discount-injection', '--turns', '3']));
+  const results = await execute(plan, { budget: new Budget({ runCapUsd: 1 }) });
+  assert.deepEqual(Object.keys(results.summary.better).sort(), ['monologues', 'stackedQuestions', 'wordsMedian', 'wordsP90']);
+  assert.ok(results.summary.cost['flash-plain'].latencyMedianMs > 0);
+  assert.ok(results.summary.verdict.value.speed);
+  const html = renderReport(results);
+  assert.match(html, /Typical response time/);
+  assert.doesNotMatch(html.split('id="glossary"')[0], /English share|Learner's share/);
+});

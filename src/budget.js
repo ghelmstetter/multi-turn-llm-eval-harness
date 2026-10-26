@@ -29,13 +29,14 @@ export class Budget {
     if (this.spentToday >= this.dailyCapUsd) throw new BudgetExceeded(`Daily evaluation cap of $${this.dailyCapUsd.toFixed(2)} reached`);
   }
 
-  charge(role, price, usage, targetId = null) {
+  charge(role, price, usage, targetId = null, ms = null) {
     const usd = costOf(price, usage);
     this.spent += usd;
     this.calls += 1;
     this.byRole[role] = (this.byRole[role] ?? 0) + usd;
     if (role === 'assistant' && targetId) {
-      const t = (this.byTarget[targetId] ??= { usd: 0, replies: 0, inputTokens: 0, outputTokens: 0 });
+      const t = (this.byTarget[targetId] ??= { usd: 0, replies: 0, inputTokens: 0, outputTokens: 0, ms: [] });
+      if (Number.isFinite(ms)) t.ms.push(ms);
       t.usd += usd;
       t.replies += 1;
       t.inputTokens += usage?.input ?? 0;
@@ -62,7 +63,7 @@ function writeSpend(file, usd) {
 export async function charged(budget, role, target, req) {
   budget.check();
   const out = await target.chat(req);
-  out.usd = budget.charge(role, target.price, out.usage, target.id);
+  out.usd = budget.charge(role, target.price, out.usage, target.id, out.ms);
   return out;
 }
 
