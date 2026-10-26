@@ -65,7 +65,7 @@ Mode B is judged at the conversation level: code metrics, case checks, the rubri
 | **Rubric judge** | Qualities code can't measure: level fit, gentle correction, responsiveness, honesty. A score of 1–5 per criterion, and every score must cite a reason | One call per conversation |
 | **Pairwise judge** | Which of two answers (or conversations) is better | Two calls per comparison (both orders) |
 
-For conversations, **length is a quality signal**, not a nuisance: a tutor that talks in paragraphs is a bad tutor, especially in voice, where a listener can't skim. So the harness looks at the *shape* of turn lengths (median, 90th percentile, monologues), not just the average.
+For conversations, **length is a quality signal**: a tutor that talks in paragraphs is a bad tutor, especially in voice, where a listener can't skim. So the harness looks at the *shape* of turn lengths (median, 90th percentile, monologues), not just the average.
 
 ### Judge bias controls
 
