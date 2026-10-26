@@ -91,11 +91,11 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 11 tests, no keys needed
+npm test        # 12 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
-The demo writes `results/demo/report.html`. Mock models are deterministic stand-ins that exercise the whole pipeline; the report labels mock runs clearly, and their numbers say nothing about real models.
+The demo writes `results/demo/report.html`. The report opens with the bottom line: which target won, how sure that is (a 95% interval on the head-to-head win rate, so "too close to call" is a possible answer), and whether the rubric judge, the code metrics and the case checks agree. The detailed tables and every conversation follow, with the better value in each row in bold. Mock models are deterministic stand-ins that exercise the whole pipeline; the report labels mock runs clearly, and their numbers say nothing about real models.
 
 ### A real run
 
@@ -177,7 +177,8 @@ A suite is one JSON file:
   "roleNames": { "assistant": "tutor", "user": "learner" },
   "prompts": { "plain": "...", "coached": "..." },   // prompt variants that targets can pick
   "user": { "system": "How the simulated user behaves in general." },
-  "metrics": { "target": "es", "native": "en", "levelRank": 2000, "maxWords": 50 },
+  "metrics": { "target": "es", "native": "en", "levelRank": 2000, "maxWords": 50,
+               "better": { "nativeShare": [0.1, 0.4] } },   // a target range instead of "lower is better"
   "rubric": [{ "id": "turn_length", "description": "..." }],
   "pairwiseQuestion": "Which reply would help the user more right now?",
   "cases": [{

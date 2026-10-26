@@ -146,6 +146,9 @@ async function main(argv) {
     for (const t of plan.targets) console.log(`${t.id}: wins ${(c[t.id].winRate * 100).toFixed(0)}% of turns (home-field ${c[t.id].homeField == null ? '–' : `${(c[t.id].homeField * 100).toFixed(0)} pts`})`);
     console.log(`Judge position consistency: ${(c.positionConsistency * 100).toFixed(0)}%`);
   }
+  const v = results.summary.verdict;
+  if (v) console.log(v.strength === 'clear' ? `Winner: ${v.leader} (won ${(v.winRate * 100).toFixed(0)}% of ${v.n} ${v.unit}; 95% interval ${(v.ci[0] * 100).toFixed(0)}-${(v.ci[1] * 100).toFixed(0)}%)`
+    : v.strength === 'leaning' ? `Leaning ${v.leader}, not conclusive (won ${(v.winRate * 100).toFixed(0)}% of ${v.n} ${v.unit}; interval includes 50%)` : `Too close to call (${v.n} ${v.unit})`);
   console.log(`${results.partial ? `Stopped early (${results.stopReason}). ` : ''}Spent ${fmt(budget.spent)}. Report: ${join(dir, 'report.html')}`);
 }
 

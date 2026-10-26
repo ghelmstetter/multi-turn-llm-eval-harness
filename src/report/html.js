@@ -8,6 +8,49 @@ const num = (x, d = 1) => (x == null ? '–' : Number(x).toFixed(d));
 const usd = (x) => (x == null ? '–' : `$${x < 0.01 && x > 0 ? x.toFixed(4) : x.toFixed(2)}`);
 const signed = (x) => (x == null ? '–' : `${x > 0 ? '+' : ''}${Math.round(x * 100)} pts`);
 
+import { METRIC_BETTER, metricScore } from '../run.js';
+
+const metricName = (m, rule) => ({
+  wordsMedian: 'shorter turns', wordsP90: 'fewer long turns', monologues: 'fewer monologues', stackedQuestions: 'fewer stacked questions',
+  nativeShare: Array.isArray(rule) ? `English share closer to ${pct(rule[0])}–${pct(rule[1])}` : rule > 0 ? 'more English' : 'less English',
+  aboveLevelShare: 'fewer words above level', userTalkShare: 'more learner talk',
+}[m] ?? m);
+const ruleText = (rule) => (Array.isArray(rule) ? `best between ${pct(rule[0])} and ${pct(rule[1])}` : rule > 0 ? 'higher is better' : 'lower is better');
+
+/** The bottom line at the top of the report: who won, how sure, and what supports or contradicts it. */
+function verdictBox(v, label, meta, better) {
+  if (!v) return '';
+  const L = (id) => esc(label[id] ?? id);
+  const head = v.strength === 'clear' ? `Winner: ${L(v.leader)}`
+    : v.strength === 'leaning' ? `Leaning: ${L(v.leader)}, but not conclusive yet`
+      : 'Too close to call';
+  const sample = `${v.n} ${v.unit}`;
+  const rate = `${L(v.leader)} won ${pct(v.winRate)} of ${sample} judged head to head (95% interval ${pct(v.ci[0])}–${pct(v.ci[1])})`;
+  const why = v.strength === 'clear' ? `${rate}.`
+    : v.strength === 'leaning' ? `${rate}. The interval includes 50%, so more turns or repeats could change the result.`
+      : `${rate}: not distinguishable from a coin flip at this sample size.`;
+  const lines = [];
+  if (v.rubric[v.leader] != null && v.rubric[v.other] != null) {
+    const agree = v.rubricLead == null ? 'about even' : v.rubricLead === v.leader ? 'agrees' : `<b>disagrees</b> (favors ${L(v.other)})`;
+    lines.push(`Rubric judge: ${num(v.rubric[v.leader])} vs ${num(v.rubric[v.other])} out of 5, ${agree}.`);
+  }
+  const mw = (id) => v.metricWins[id].map((m) => metricName(m, better[m]));
+  if (mw(v.leader).length) lines.push(`${L(v.leader)} is better on ${mw(v.leader).join(', ')}.`);
+  if (mw(v.other).length) lines.push(`${L(v.other)} is better on ${mw(v.other).join(', ')}.`);
+  const c = v.checks;
+  if (c[v.leader].total || c[v.other].total) lines.push(`Case checks passed: ${L(v.leader)} ${c[v.leader].passed}/${c[v.leader].total}, ${L(v.other)} ${c[v.other].passed}/${c[v.other].total}.`);
+  return `<section class="verdict ${v.strength}"><h2>${head}</h2><p>${why}</p><ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+  <p class="muted small">The headline comes from the pairwise judge. Turns within one conversation aren't fully independent, so treat the interval as approximate.${meta.mock ? ' <b>Mock run: these results are placeholders.</b>' : ''}</p></section>`;
+}
+
+/** Bold the better value in a row (rule: -1 lower is better, 1 higher, or a [low, high] range). */
+function bestCells(values, rule, fmt) {
+  const scores = values.map((x) => (x == null ? null : metricScore(x, rule)));
+  const ok = scores.filter((x) => x != null);
+  const best = ok.length > 1 && new Set(ok).size > 1 ? Math.max(...ok) : null;
+  return values.map((x, i) => `<td${best != null && scores[i] === best ? ' class="best"' : ''}>${fmt(x)}</td>`).join('');
+}
+
 const METRICS = [
   ['wordsMedian', 'Median words per turn', (x) => num(x, 0)],
   ['wordsP90', '90th-percentile words per turn', (x) => num(x, 0)],
@@ -25,8 +68,9 @@ export function renderReport(results) {
   const cmp = summary.comparison;
   const S = summary.targets;
 
-  const summaryRows = METRICS.map(([k, name, f]) => `<tr><th>${esc(name)}</th>${ids.map((id) => `<td>${f(S[id]?.metrics?.[k])}</td>`).join('')}</tr>`).join('');
-  const rubricRows = (meta.rubric ?? []).map((c) => `<tr><th title="${esc(c.description)}">${esc(c.id)}</th>${ids.map((id) => `<td>${num(S[id]?.rubric?.[c.id])}</td>`).join('')}</tr>`).join('');
+  const better = summary.better ?? METRIC_BETTER;
+  const summaryRows = METRICS.map(([k, name, f]) => `<tr><th>${esc(name)}<span class="dir">${ruleText(better[k])}</span></th>${bestCells(ids.map((id) => S[id]?.metrics?.[k] ?? null), better[k], f)}</tr>`).join('');
+  const rubricRows = (meta.rubric ?? []).map((c) => `<tr><th title="${esc(c.description)}">${esc(c.id)}</th>${bestCells(ids.map((id) => S[id]?.rubric?.[c.id] ?? null), 1, (x) => num(x))}</tr>`).join('');
 
   let cmpHtml = '';
   if (cmp && meta.mode === 'mirrored') {
@@ -78,12 +122,16 @@ details.conv{background:var(--card);border:1px solid var(--line);border-radius:1
 .msg{padding:8px 12px;border-radius:10px;max-width:85%;white-space:pre-wrap}.msg.assistant{background:var(--a)}.msg.user{background:var(--u);margin-left:auto}
 .msg.alt{opacity:.85;margin-top:6px;max-width:100%}.who{display:block;font-size:.75rem;color:var(--muted)}
 .note{font-size:.8rem;color:var(--muted);margin-top:4px;white-space:normal}.shadow summary{font-size:.8rem;color:var(--muted);cursor:pointer;margin-top:6px}
+.verdict{background:var(--card);border:2px solid var(--line);border-left:6px solid var(--muted);border-radius:10px;padding:4px 16px;margin:16px 0}
+.verdict.clear{border-left-color:var(--ok)}.verdict.leaning{border-left-color:var(--accent)}.verdict h2{margin:10px 0 4px;font-size:1.25rem}.verdict ul{margin:4px 0 8px;padding-left:20px}
+td.best{font-weight:700}th .dir{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
 .checks{list-style:none;padding:0;margin:4px 0}.pass{color:var(--ok)}.fail{color:var(--bad)}
 code{font-size:.85em}
 </style></head><body><main>
 <h1>${esc(meta.suite.title)}</h1>
 <p class="muted">${esc(meta.mode)} mode · ${meta.cases.length} case(s) × ${meta.repeats} repeat(s) × ${meta.turns} turns · judge: ${esc(meta.judge.vendor)} ${esc(meta.judge.model ?? '')} · simulated user: ${esc(meta.user.vendor)} ${esc(meta.user.model ?? '')} · ${esc(meta.startedAt)}</p>
 ${meta.mock ? '<div class="banner"><b>Mock run.</b> No model was called: these numbers only demonstrate the report format.</div>' : ''}
+${verdictBox(summary.verdict, label, meta, summary.better ?? METRIC_BETTER)}
 ${results.partial ? `<div class="banner"><b>Partial run:</b> ${esc(results.stopReason)}. Results so far are kept.</div>` : ''}
 <h2>Targets</h2>
 <table><tr><th>Target</th><th>Vendor / model</th><th>Prompt variant</th></tr>${meta.targets.map((t) => `<tr><td>${esc(t.label ?? t.id)}</td><td>${esc(t.vendor)} / ${esc(t.model ?? '')}</td><td>${esc(t.prompt ?? '')}</td></tr>`).join('')}</table>

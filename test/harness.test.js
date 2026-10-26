@@ -162,3 +162,22 @@ test('estimates grow with turns, repeats and mode, and are zero for mock targets
   assert.ok(ind.totalUsd < a.totalUsd, 'independent runs make fewer calls than mirrored ones');
   assert.equal(estimateFor(loadPlan(parseArgs(['--mock']))).totalUsd, 0);
 });
+
+test('verdict: clear / leaning / too close, with a confidence interval and supporting evidence', async () => {
+  const { verdict, wilson, metricScore } = await import('../src/run.js');
+  const [lo, hi] = wilson(0.5, 20);
+  assert.ok(lo < 0.5 && hi > 0.5);
+  assert.equal(metricScore(0, [0.1, 0.4]) < metricScore(0.2, [0.1, 0.4]), true, 'a range prefers values inside it');
+  const targets = [{ id: 'x' }, { id: 'y' }];
+  const perTarget = { x: { rubricMean: 4, metrics: { nativeShare: 0.2, wordsMedian: 12 }, checksPassed: 1, checksTotal: 1 }, y: { rubricMean: 3, metrics: { nativeShare: 0, wordsMedian: 30 }, checksPassed: 0, checksTotal: 1 } };
+  const v = (rate, n) => verdict({ mode: 'mirrored', targets, perTarget, comparison: { turnsCompared: n, x: { winRate: rate }, y: { winRate: 1 - rate } }, better: { nativeShare: [0.1, 0.4], wordsMedian: -1 } });
+  assert.equal(v(0.9, 40).strength, 'clear');
+  assert.equal(v(0.9, 40).winner, 'x');
+  assert.deepEqual(v(0.9, 40).metricWins.x.sort(), ['nativeShare', 'wordsMedian']);
+  assert.equal(v(0.6, 10).strength, 'leaning');
+  assert.equal(v(0.6, 10).winner, 'x');
+  assert.equal(v(0.5, 10).strength, 'tie');
+  assert.equal(v(0.5, 10).winner, null);
+  assert.equal(v(0.2, 40).leader, 'y', 'the leader can be either target');
+  assert.equal(v(0.2, 40).rubricLead, 'x', 'and the rubric can disagree');
+});

@@ -143,5 +143,62 @@ export function summarize({ mode, targets, suite, conversations, pairs = [] }) {
       ...Object.fromEntries(ids.map((id) => [id, { winRate: pairs.reduce((s, p) => s + (p.winner === id ? 1 : p.winner === 'tie' ? 0.5 : 0), 0) / pairs.length }])),
     };
   }
-  return { targets: out, comparison };
+  const better = { ...METRIC_BETTER, ...(suite.metrics?.better ?? {}) };
+  return { targets: out, comparison, better, verdict: verdict({ mode, targets, comparison, perTarget: out, better }) };
+}
+
+// Which way is better for each code metric: -1 lower is better, 1 higher is better, or a
+// [low, high] target range (closer to the range is better). A suite can override these in
+// suite.metrics.better, e.g. a native-language share range that suits the learner's level.
+export const METRIC_BETTER = { wordsMedian: -1, wordsP90: -1, monologues: -1, stackedQuestions: -1, nativeShare: -1, aboveLevelShare: -1, userTalkShare: 1 };
+
+/** 95% Wilson interval for a proportion (ties counted as half a win). */
+/** A comparable score for a metric value: higher is better. */
+export function metricScore(x, rule) {
+  if (Array.isArray(rule)) return x < rule[0] ? x - rule[0] : x > rule[1] ? rule[1] - x : 0;
+  return x * rule;
+}
+
+export function wilson(p, n, z = 1.96) {
+  if (!n) return [0, 1];
+  const d = 1 + (z * z) / n;
+  const c = (p + (z * z) / (2 * n)) / d;
+  const h = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+
+/**
+ * The bottom line, in plain words. The headline comes from the pairwise judge (the most direct
+ * comparison); the rubric, the code metrics and the checks are listed as supporting evidence,
+ * including where they disagree with the headline.
+ *   strength 'clear':   the win rate's 95% interval is entirely above 50%
+ *   strength 'leaning': ahead, but the interval includes 50% (more turns or repeats would settle it)
+ *   strength 'tie':     too close to call
+ */
+export function verdict({ mode, targets, comparison, perTarget, better = METRIC_BETTER }) {
+  if (targets.length < 2 || !comparison) return null;
+  const [X, Y] = targets.slice(0, 2).map((t) => t.id);
+  const n = mode === 'mirrored' ? comparison.turnsCompared : comparison.conversationsCompared;
+  const px = comparison[X]?.winRate;
+  if (px == null || !n) return null;
+  const lead = px >= 0.5 ? X : Y;
+  const other = lead === X ? Y : X;
+  const p = lead === X ? px : 1 - px;
+  const ci = wilson(p, n);
+  const strength = ci[0] > 0.5 ? 'clear' : p > 0.5 ? 'leaning' : 'tie';
+  const rx = perTarget[X]?.rubricMean;
+  const ry = perTarget[Y]?.rubricMean;
+  const rubricLead = rx == null || ry == null || Math.abs(rx - ry) < 0.25 ? null : rx > ry ? X : Y;
+  const metricWins = { [X]: [], [Y]: [] };
+  for (const [m, dir] of Object.entries(better)) {
+    const a = perTarget[X]?.metrics?.[m];
+    const b = perTarget[Y]?.metrics?.[m];
+    if (a == null || b == null) continue;
+    const sa = metricScore(a, dir);
+    const sb = metricScore(b, dir);
+    if (Math.abs(sa - sb) < 1e-9) continue;
+    metricWins[sa > sb ? X : Y].push(m);
+  }
+  const checks = Object.fromEntries([X, Y].map((id) => [id, { passed: perTarget[id]?.checksPassed ?? 0, total: perTarget[id]?.checksTotal ?? 0 }]));
+  return { winner: strength === 'tie' ? null : lead, leader: lead, other, strength, winRate: p, ci, n, unit: mode === 'mirrored' ? 'turns' : 'conversation pairs', rubricLead, rubric: { [X]: rx, [Y]: ry }, metricWins, checks };
 }
