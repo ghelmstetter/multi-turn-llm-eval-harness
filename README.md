@@ -1,5 +1,7 @@
 # multi-turn-llm-eval-harness
 
+**[See a sample interactive report →](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/sample-report/report.html)**
+
 A harness for evaluating LLMs in **multi-turn conversations**, where most evaluation tools only look at single prompts and single answers.
 
 It comes with two example suites. The main one evaluates a **conversational Spanish tutor**: a model playing a friendly tutor for an English-speaking beginner, talking with a simulated learner. The second evaluates a **customer-support agent** for a fictional bike shop. The engine itself is domain-neutral (a suite is a JSON file of prompts, simulated-user cases, checks and a rubric), so the same approach works for any conversational assistant; [the guide](docs/writing-a-suite.md) shows how to write one for your own product.
