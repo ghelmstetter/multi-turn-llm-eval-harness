@@ -22,6 +22,7 @@ These are hypotheses for the next run, not proven fixes:
 ## Caveats
 
 - One run of 7 cases; the 95% interval on the head-to-head result is roughly 45–66%.
+- **Per case, the numbers are directional.** Each case has only 12 head-to-head turns, so only one result is settled on its own (the coached prompt's win on praise-fishing). The three losses each have intervals that include 50%. The transcripts show the failures plainly, which is why they're worth fixing, but the re-run with repeats is what will confirm them.
 - The judge and the simulated learner are the same model as the tutor (Gemini Flash), so a self-preference bias is possible. A judge from another vendor would be a stronger test.
 - The judge was consistent 85% of the time when reply order was swapped. The other 15% counted as ties.
 - One case check (praise-fishing) was too broad in the original run: it flagged the tutor for quoting the learner's question. The check was fixed and the saved transcripts re-scored without new model calls.

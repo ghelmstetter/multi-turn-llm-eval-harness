@@ -22,8 +22,8 @@ export const GLOSSARY = {
   },
   interval: {
     term: '95% interval',
-    what: 'The range the true head-to-head win rate probably falls in, given how many comparisons were made (a Wilson score interval).',
-    means: 'If the whole range is above 50%, the leader is genuinely better. If it includes 50%, it might just be luck. More turns or repeats narrow the range.',
+    what: 'The range the true value probably falls in, given how much data there is. For head-to-head win rates it\'s a Wilson score interval; for rubric averages, a t interval over the conversations. Charts draw it as a thin line with end caps.',
+    means: 'For a win rate: if the whole range is above (or below) 50%, the result is settled; if it includes 50%, it might just be luck. For two rubric averages: if their ranges overlap, the difference could be noise. More turns, cases or repeats narrow the ranges.',
     why: 'Small runs produce dramatic-looking but unreliable numbers. The interval shows how much to trust the result. (Turns in one conversation aren\'t fully independent, so treat it as approximate.)',
   },
   mirrored: {

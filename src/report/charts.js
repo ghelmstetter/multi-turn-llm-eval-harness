@@ -4,6 +4,8 @@
 // cost roles. Every mark has a hover tooltip (data-tip), values are direct-labeled, and the
 // tables in the report double as the table view.
 
+import { shareInterval } from '../run.js';
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x) => `${Math.round(x * 100)}%`;
 
@@ -21,11 +23,13 @@ function seg(x, y, w, h, { left = false, right = false, r = 4 } = {}) {
 
 /**
  * Head-to-head shares: one 100% bar per row, split into A wins | ties | B wins.
- * rows: [{ label, a, tie, b, n }] as fractions.
+ * rows: [{ label, a, tie, b, n }] as fractions. Under each bar, a whisker shows the 95%
+ * interval of the first target's win rate (ties as half): if it crosses the 50% line, the
+ * row isn't settled.
  */
 export function winShareChart(rows, names) {
   // Row labels sit above their bars, so long target names never get cut off.
-  const W = 720; const lw = 0; const bw = W; const bh = 22; const gap = 34;
+  const W = 720; const lw = 0; const bw = W; const bh = 22; const gap = 38;
   const H = rows.length * (bh + gap);
   const bars = rows.map((r, i) => {
     const y = 20 + i * (bh + gap);
@@ -39,19 +43,32 @@ export function winShareChart(rows, names) {
       x += w + 2;
       return out;
     }).join('');
-    return `<text x="0" y="${y - 6}" class="lab">${esc(r.label)} <tspan class="tick">(${r.n})</tspan></text>${segs}`;
+    const iv = shareInterval(r);
+    let whisker = '';
+    let status = '';
+    if (iv) {
+      const [x0, x1, xm, wy] = [lw + iv.ci[0] * bw, lw + iv.ci[1] * bw, lw + iv.rate * bw, y + bh + 7];
+      const lead = iv.rate >= 0.5 ? names[0] : names[1];
+      const lr = iv.rate >= 0.5 ? iv.rate : 1 - iv.rate;
+      const lci = iv.rate >= 0.5 ? iv.ci : [1 - iv.ci[1], 1 - iv.ci[0]];
+      const tip = `${lead}: ${pct(lr)} win rate, ties as half (95% interval ${pct(lci[0])}–${pct(lci[1])}). ${iv.settled ? 'The interval excludes 50%: settled.' : 'The interval includes 50%: not settled.'}`;
+      whisker = `<g class="ci" data-tip="${esc(tip)}"><line x1="${x0}" x2="${x1}" y1="${wy}" y2="${wy}"/><line x1="${x0}" x2="${x0}" y1="${wy - 3}" y2="${wy + 3}"/><line x1="${x1}" x2="${x1}" y1="${wy - 3}" y2="${wy + 3}"/><circle cx="${xm}" cy="${wy}" r="2.5"/><rect x="${x0}" y="${wy - 5}" width="${Math.max(1, x1 - x0)}" height="10" fill="transparent"/></g>`;
+      status = `<text x="${W}" y="${y - 6}" class="tick" text-anchor="end">${iv.settled ? `settled: ${esc(lead)}` : 'not settled'}</text>`;
+    }
+    return `<text x="0" y="${y - 6}" class="lab">${esc(r.label)} <tspan class="tick">(${r.n})</tspan></text>${status}${segs}${whisker}`;
   }).join('');
   const mid = lw + bw / 2;
-  return `${legend([{ label: names[0], color: '--s1' }, { label: 'Ties', color: '--tie' }, { label: names[1], color: '--s2' }])}
+  return `${legend([{ label: names[0], color: '--s1' }, { label: 'Ties', color: '--tie' }, { label: names[1], color: '--s2' }])}<p class="ci-key"><svg width="34" height="10" aria-hidden="true"><g class="ci"><line x1="2" x2="32" y1="5" y2="5"/><line x1="2" x2="2" y1="2" y2="8"/><line x1="32" x2="32" y1="2" y2="8"/><circle cx="17" cy="5" r="2.5"/></g></svg> 95% interval of the win rate (ties as half). If it crosses the 50% line, that row could be luck.</p>
   <svg viewBox="0 0 ${W} ${H + 16}" class="chart" role="img" aria-label="Head-to-head win shares"><line x1="${mid}" x2="${mid}" y1="14" y2="${H}" class="ref"/>${bars}
   <text x="${mid}" y="${H + 12}" class="tick" text-anchor="middle">50%</text></svg>`;
 }
 
 /**
  * Two targets compared on one measure: a pair of horizontal bars on a shared scale.
- * opts: { max, fmt, range?: [lo, hi] (shaded target band), better?: text }
+ * opts: { max, fmt, range?: [lo, hi] (shaded target band), cis?: [[lo, hi] | null, …] (95%
+ * intervals, drawn as whiskers), ciNote?: text for the interval tooltip }
  */
-export function pairBars(title, values, names, { max, fmt, range = null, note = '' } = {}) {
+export function pairBars(title, values, names, { max, fmt, range = null, note = '', cis = null, ciNote = '' } = {}) {
   const W = 340; const lw = 0; const bw = W - 60; const bh = 14; const H = 2 * bh + 10 + 18;
   const m = max ?? Math.max(1e-9, ...values.filter((v) => v != null)) * 1.1;
   const sx = (v) => lw + (Math.max(0, Math.min(m, v)) / m) * bw;
@@ -60,7 +77,11 @@ export function pairBars(title, values, names, { max, fmt, range = null, note = 
     const y = 2 + i * (bh + 6);
     if (v == null) return `<text x="2" y="${y + bh - 3}" class="tick">no data</text>`;
     const w = Math.max(v > 0 ? 3 : 0, sx(v) - lw);
-    return `<path d="${seg(lw, y, w, bh, { right: true })}" style="fill:var(--s${i + 1})" data-tip="${esc(names[i])}: ${esc(fmt(v))}"/><text x="${lw + w + 6}" y="${y + bh - 3}" class="val">${esc(fmt(v))}</text>`;
+    const ci = cis?.[i];
+    const cy = y + bh / 2;
+    const whisker = ci ? `<g class="ci" data-tip="${esc(names[i])}: ${esc(fmt(v))}, 95% interval ${esc(fmt(ci[0]))}–${esc(fmt(ci[1]))}${ciNote ? ` ${esc(ciNote)}` : ''}"><line x1="${sx(ci[0])}" x2="${sx(ci[1])}" y1="${cy}" y2="${cy}"/><line x1="${sx(ci[0])}" x2="${sx(ci[0])}" y1="${cy - 4}" y2="${cy + 4}"/><line x1="${sx(ci[1])}" x2="${sx(ci[1])}" y1="${cy - 4}" y2="${cy + 4}"/><rect x="${sx(ci[0])}" y="${y}" width="${Math.max(1, sx(ci[1]) - sx(ci[0]))}" height="${bh}" fill="transparent"/></g>` : '';
+    const tx = Math.max(lw + w, ci ? sx(ci[1]) : 0) + 6;
+    return `<path d="${seg(lw, y, w, bh, { right: true })}" style="fill:var(--s${i + 1})" data-tip="${esc(names[i])}: ${esc(fmt(v))}"/>${whisker}<text x="${tx}" y="${y + bh - 3}" class="val">${esc(fmt(v))}</text>`;
   }).join('');
   return `<figure class="mini"><figcaption>${title}</figcaption><svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="${esc(title.replace(/<[^>]+>/g, ''))}">${band}${bars}
   <line x1="${lw}" x2="${lw}" y1="0" y2="${2 * bh + 10}" class="axis"/>${range ? `<text x="${(sx(range[0]) + sx(range[1])) / 2}" y="${2 * bh + 24}" text-anchor="middle" class="tick">target range</text>` : ''}</svg>${note ? `<p class="note">${note}</p>` : ''}</figure>`;

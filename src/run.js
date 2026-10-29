@@ -162,6 +162,31 @@ export function metricScore(x, rule) {
   return x * rule;
 }
 
+// Two-sided 95% Student t critical values for 1..30 degrees of freedom (then ≈ 1.96).
+const T95 = [12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228, 2.201, 2.179, 2.16, 2.145, 2.131, 2.12, 2.11, 2.101, 2.093, 2.086, 2.08, 2.074, 2.069, 2.064, 2.06, 2.056, 2.052, 2.048, 2.045, 2.042];
+
+/**
+ * 95% interval for the mean of a few scores (Student t), clamped to [lo, hi]. Null with fewer
+ * than 3 scores: too few to say anything about the spread.
+ */
+export function meanInterval(xs, { lo = -Infinity, hi = Infinity } = {}) {
+  const v = xs.filter((x) => Number.isFinite(x));
+  const n = v.length;
+  if (n < 3) return null;
+  const m = v.reduce((s, x) => s + x, 0) / n;
+  const sd = Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (n - 1));
+  const h = (T95[n - 2] ?? 1.96) * sd / Math.sqrt(n);
+  return { mean: m, ci: [Math.max(lo, m - h), Math.min(hi, m + h)], n };
+}
+
+/** Win rate with ties as half a win, and its 95% interval; settled = the interval excludes 50%. */
+export function shareInterval({ a, tie, n }) {
+  if (!n) return null;
+  const rate = a + tie / 2;
+  const ci = wilson(rate, n);
+  return { rate, ci, settled: ci[0] > 0.5 || ci[1] < 0.5 };
+}
+
 export function wilson(p, n, z = 1.96) {
   if (!n) return [0, 1];
   const d = 1 + (z * z) / n;

@@ -1,7 +1,7 @@
 // After a run: re-scoring saved transcripts, per-case results, automatic findings, and
 // rendering analyst notes. None of this calls a model.
 import { conversationMetrics, runChecks } from './graders/metrics.js';
-import { summarize, costPerTarget, valueOf, METRIC_BETTER, metricScore } from './run.js';
+import { summarize, costPerTarget, valueOf, METRIC_BETTER, metricScore, shareInterval } from './run.js';
 
 /**
  * Re-run the code graders (metrics and checks) on a saved run with the suite's current
@@ -50,6 +50,8 @@ export function byCase(results) {
       const checks = own.flatMap((c) => c.checks ?? []);
       return [id, { failed: checks.filter((k) => !k.pass), checks: checks.length, rubric: mean(own.map((c) => mean(Object.values(c.rubric?.scores ?? {}).map((s) => s.score)))) }];
     }));
+    // The first target's win rate in this case (ties as half) with its 95% interval.
+    if (share) share.interval = shareInterval(share);
     return { case: caseId, share, per };
   });
 }
@@ -93,7 +95,13 @@ export function findings(results) {
     if (!c.share || c.share.n < 2) continue;
     const leaderShare = v.leader === ids[0] ? c.share.a : c.share.b;
     const otherShare = v.leader === ids[0] ? c.share.b : c.share.a;
-    if (otherShare > leaderShare) out.push({ kind: 'case', case: c.case, text: `${label[v.other]} won the "${caseTitle[c.case] ?? c.case}" case (${Math.round(otherShare * 100)}% vs ${Math.round(leaderShare * 100)}% of its turns), against the overall result.` });
+    if (otherShare > leaderShare) {
+      const iv = c.share.interval;
+      // The interval is for the first target; turn it into the case winner's.
+      const ci = iv && (v.other === ids[0] ? iv.ci : [1 - iv.ci[1], 1 - iv.ci[0]]);
+      const caveat = iv && !iv.settled ? ` Not settled on its own: with ${c.share.n} turns, the 95% interval on its win rate (${Math.round(ci[0] * 100)}–${Math.round(ci[1] * 100)}%) includes 50%.` : '';
+      out.push({ kind: 'case', case: c.case, settled: Boolean(iv?.settled), text: `${label[v.other]} won the "${caseTitle[c.case] ?? c.case}" case (${Math.round(otherShare * 100)}% vs ${Math.round(leaderShare * 100)}% of its turns), against the overall result.${caveat}` });
+    }
   }
   // Failed checks.
   for (const c of results.conversations) {

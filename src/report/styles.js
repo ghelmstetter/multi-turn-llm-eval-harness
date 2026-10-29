@@ -24,7 +24,7 @@ pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);borde
 .chart .lab{fill:var(--fg2)}.chart .tick{fill:var(--muted);font-size:11px}.chart .val{fill:var(--fg);font-variant-numeric:tabular-nums}.chart .in{fill:#fff;font-weight:600}.chart .in.dark{fill:#0b0b0b}
 @media (prefers-color-scheme:dark){.chart .in.dark{fill:#f0efec}}
 .chart .ref,.chart .axis{stroke:var(--axis);stroke-width:1}.chart .grid{stroke:var(--line);stroke-width:1}.chart .limit{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:4 3}
-.chart .band{fill:var(--band)}.chart .dot{stroke:var(--card);stroke-width:2}.chart [data-tip]{cursor:default}.chart [data-tip]:hover{opacity:.85}
+.chart .band{fill:var(--band)}.ci line{stroke:var(--fg);stroke-width:1.5}.ci circle{fill:var(--fg)}.chart .ci:hover{opacity:.7}.ci-key{font-size:.8rem;color:var(--muted);margin:0 0 6px;display:flex;align-items:center;gap:6px}.ci-key svg{flex:none;overflow:visible}.chart .dot{stroke:var(--card);stroke-width:2}.chart [data-tip]{cursor:default}.chart [data-tip]:hover{opacity:.85}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px 22px;margin:8px 0}
 .mini{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}.mini figcaption{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .mini .note{font-size:.78rem;color:var(--muted);margin:4px 0 0}

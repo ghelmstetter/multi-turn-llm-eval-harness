@@ -3,7 +3,7 @@
 // every conversation, and a glossary. Every term has an ⓘ pop-up explaining what it is, how to
 // read it and why it matters.
 import { REPORT_CSS } from './styles.js';
-import { METRIC_BETTER, metricScore } from '../run.js';
+import { METRIC_BETTER, metricScore, meanInterval } from '../run.js';
 import { GLOSSARY, info, popovers, glossarySection } from './glossary.js';
 import { winShareChart, pairBars, lengthStrip, splitBar, legend, TOOLTIP_SCRIPT } from './charts.js';
 import { byCase, findings, markdownToHtml } from '../analysis.js';
@@ -187,10 +187,23 @@ export function renderReport(results, { home = null } = {}) {
   // ---- rubric ----
   let rubric = '';
   if ((meta.rubric ?? []).some((c) => ids.some((id) => S[id]?.rubric?.[c.id] != null))) {
-    const charts = meta.rubric.map((c) => pairBars(`${esc(c.id.replace(/_/g, ' '))}`, ids.map((id) => S[id]?.rubric?.[c.id] ?? null), names, { max: 5, fmt: (x) => num(x), note: esc(c.description) })).join('');
-    const table = `<table><tr><th></th>${ids.map((id) => `<th>${L(id)}</th>`).join('')}</tr>${meta.rubric.map((c) => `<tr><th>${esc(c.id)}<span class="dir">${esc(c.description)}</span></th>${bestCells(ids.map((id) => S[id]?.rubric?.[c.id] ?? null), 1, (x) => num(x))}</tr>`).join('')}
-    <tr><th>Mean</th>${bestCells(ids.map((id) => S[id]?.rubricMean ?? null), 1, (x) => num(x))}</tr></table>`;
-    rubric = `<h2>Judged by the rubric ${info('rubric')}</h2><p class="lead">An LLM judge's scores from 1 to 5 for each whole conversation, averaged. Every score comes with a reason: see the conversations below.</p>
+    // Each criterion's scores across a target's own conversations, for a 95% interval on the average.
+    const scoresOf = (id, crit) => conversations.filter((c) => c.main === id).map((c) => c.rubric?.scores?.[crit]?.score).filter(Number.isFinite);
+    const meansOf = (id) => conversations.filter((c) => c.main === id).map((c) => { const v = Object.values(c.rubric?.scores ?? {}).map((s) => s.score).filter(Number.isFinite); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; }).filter(Number.isFinite);
+    const ivs = Object.fromEntries(meta.rubric.map((c) => [c.id, ids.map((id) => meanInterval(scoresOf(id, c.id), { lo: 1, hi: 5 }))]));
+    const meanIvs = ids.map((id) => meanInterval(meansOf(id), { lo: 1, hi: 5 }));
+    const nConv = Math.min(...ids.map((id) => scoresOf(id, meta.rubric[0].id).length));
+    const overlap = (a, b) => a && b && a.ci[0] <= b.ci[1] && b.ci[0] <= a.ci[1];
+    const charts = meta.rubric.map((c) => pairBars(`${esc(c.id.replace(/_/g, ' '))}`, ids.map((id) => S[id]?.rubric?.[c.id] ?? null), names, { max: 5, fmt: (x) => num(x), note: esc(c.description), cis: ivs[c.id].map((iv) => iv?.ci ?? null), ciNote: `(over ${nConv} conversations)` })).join('');
+    const cell = (iv, v) => `${num(v)}${iv ? ` <span class="muted small">(${num(iv.ci[0])}–${num(iv.ci[1])})</span>` : ''}`;
+    const row = (name, desc, vals, iv) => { const best = Math.max(...vals.filter((x) => x != null)); return `<tr><th>${name}${desc ? `<span class="dir">${desc}</span>` : ''}</th>${vals.map((v, i) => `<td${v === best && vals.filter((x) => x === best).length === 1 && !overlap(iv[0], iv[1]) ? ' class="best"' : ''}>${v == null ? '–' : cell(iv[i], v)}</td>`).join('')}</tr>`; };
+    const table = `<table><tr><th></th>${ids.map((id) => `<th>${L(id)}</th>`).join('')}</tr>${meta.rubric.map((c) => row(esc(c.id), esc(c.description), ids.map((id) => S[id]?.rubric?.[c.id] ?? null), ivs[c.id])).join('')}
+    ${row('Mean', '', ids.map((id) => S[id]?.rubricMean ?? null), meanIvs)}</table><p class="small muted">In parentheses: the 95% interval. A value is bold only when its interval doesn't overlap the other's.</p>`;
+    const clearOnes = meta.rubric.filter((c) => ivs[c.id][0] && ivs[c.id][1] && !overlap(ivs[c.id][0], ivs[c.id][1])).map((c) => c.id.replace(/_/g, ' '));
+    const spread = nConv >= 3
+      ? ` The thin line on each bar is its 95% interval ${info('interval')} over ${nConv} conversations per target; where two intervals overlap, the difference could be noise. ${clearOnes.length ? `Separated: <b>${esc(clearOnes.join(', '))}</b>.` : 'In this run, every pair of intervals overlaps.'}`
+      : ` With fewer than 3 conversations per target, there are too few scores to show an interval.`;
+    rubric = `<h2>Judged by the rubric ${info('rubric')}</h2><p class="lead">An LLM judge's scores from 1 to 5 for each whole conversation, averaged. Every score comes with a reason: see the conversations below.${spread}</p>
     ${legend(ids.map((id, i) => ({ label: label[id], color: `--s${i + 1}` })))}<div class="grid">${charts}</div>
     <details class="tv"><summary>Show as a table</summary>${table}</details>`;
   }
@@ -236,18 +249,25 @@ export function renderReport(results, { home = null } = {}) {
     const title = (id) => (meta.caseInfo ?? []).find((x) => x.id === id)?.title ?? id;
     const lead = summary.verdict?.leader;
     const rows = BC.filter((c) => c.share).map((c) => ({ label: title(c.case), ...c.share }));
-    const table = `<table><tr><th>Case</th>${ids.map((id) => `<th>${L(id)}: rubric</th>`).join('')}${ids.map((id) => `<th>${L(id)}: failed checks</th>`).join('')}</tr>
-      ${BC.map((c) => `<tr><th>${esc(title(c.case))}</th>${bestCells(ids.map((id) => c.per[id]?.rubric ?? null), 1, (x) => num(x))}${ids.map((id) => `<td>${c.per[id]?.failed.length ? `<span class="fail">${c.per[id].failed.map((k) => esc(k.id)).join(', ')}</span>` : c.per[id]?.checks ? '<span class="pass">none</span>' : '–'}</td>`).join('')}</tr>`).join('')}</table>`;
+    const ivText = (c) => { const iv = c.share?.interval; if (!iv) return '–'; const lead = iv.rate >= 0.5 ? 0 : 1; const r = lead ? 1 - iv.rate : iv.rate; const ci = lead ? [1 - iv.ci[1], 1 - iv.ci[0]] : iv.ci; return `${esc(label[ids[lead]])} ${pct(r)} <span class="muted small">(${pct(ci[0])}–${pct(ci[1])})</span> ${iv.settled ? '<span class="pass">settled</span>' : '<span class="muted">not settled</span>'}`; };
+    const table = `<table><tr><th>Case</th><th>Head to head: leader, win rate (95% interval)</th>${ids.map((id) => `<th>${L(id)}: rubric</th>`).join('')}${ids.map((id) => `<th>${L(id)}: failed checks</th>`).join('')}</tr>
+      ${BC.map((c) => `<tr><th>${esc(title(c.case))}</th><td>${ivText(c)}</td>${bestCells(ids.map((id) => c.per[id]?.rubric ?? null), 1, (x) => num(x))}${ids.map((id) => `<td>${c.per[id]?.failed.length ? `<span class="fail">${c.per[id].failed.map((k) => esc(k.id)).join(', ')}</span>` : c.per[id]?.checks ? '<span class="pass">none</span>' : '–'}</td>`).join('')}</tr>`).join('')}</table>`;
     const flagged = BC.filter((c) => {
       if (!c.share || !lead) return false;
       const ls = lead === ids[0] ? c.share.a : c.share.b;
       const os = lead === ids[0] ? c.share.b : c.share.a;
       return os > ls;
     }).map((c) => title(c.case));
+    const flaggedUnsettled = BC.filter((c) => flagged.includes(title(c.case)) && c.share?.interval && !c.share.interval.settled).length;
+    const nTurns = Math.max(...BC.map((c) => c.share?.n ?? 0));
+    const anySettled = BC.some((c) => c.share?.interval?.settled);
+    const caution = flagged.length && flaggedUnsettled === flagged.length
+      ? ` ${flagged.length === 1 ? 'It isn\'t' : 'None of them is'} settled on ${flagged.length === 1 ? 'its' : 'their'} own: with about ${nTurns} turns per case, the 95% intervals include 50%. Read ${flagged.length === 1 ? 'that case\'s' : 'those cases\''} conversations to see whether the pattern is real, or re-run ${flagged.length === 1 ? 'it' : 'them'} with repeats.`
+      : '';
     caseHtml = `<h2>By case ${info('byCase')}</h2>
-    <p class="lead">Who won each case, turn by turn.${flagged.length ? ` <b>${L(summary.verdict.other)} won ${flagged.length === 1 ? 'one case' : `${flagged.length} cases`}</b> despite the overall result: ${flagged.map((t) => esc(t)).join(', ')}.` : ''}</p>
+    <p class="lead">Who won each case, turn by turn.${flagged.length ? ` <b>${L(summary.verdict.other)} won ${flagged.length === 1 ? 'one case' : `${flagged.length} cases`}</b> despite the overall result: ${flagged.map((t) => esc(t)).join(', ')}.${caution}` : ''}${!anySettled ? ` With this few turns per case, no single case is settled; the overall result above pools them all.` : ''}</p>
     ${winShareChart(rows, names)}
-    <details class="tv"><summary>Rubric and checks by case</summary>${table}</details>`;
+    <details class="tv"><summary>Intervals, rubric and checks by case</summary>${table}</details>`;
   }
 
   // ---- conversations ----
