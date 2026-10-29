@@ -1,14 +1,13 @@
 // Checks a suite (and the targets file used with it) before anything runs, and explains each
 // problem in plain words with where it is, so writing a new suite is a quick loop:
-// edit, `mtle validate`, fix.
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+// edit, `validate`, fix. No file access here, so the browser uses it too.
 import { METRIC_BETTER } from './run.js';
 
 const VENDORS = ['gemini', 'openai', 'anthropic', 'mock'];
 const isStr = (x) => typeof x === 'string' && x.trim().length > 0;
 
-export function validateSuite(suite, targetsCfg = null, suiteDir = null) {
+/** hasFile(name): whether a file exists in the suite's folder (optional; loaders supply it). */
+export function validateSuite(suite, targetsCfg = null, { hasFile = null } = {}) {
   const errors = [];
   const err = (where, msg) => errors.push(`${where}: ${msg}`);
 
@@ -34,7 +33,7 @@ export function validateSuite(suite, targetsCfg = null, suiteDir = null) {
   const used = m.include ?? Object.keys(METRIC_BETTER);
   if (used.includes('aboveLevelShare')) {
     if (!isStr(m.frequencyList)) err('metrics.frequencyList', 'the "words above level" metric needs a word list for the target language in the suite\'s folder (a .tsv of rank and word, most common first), or remove aboveLevelShare from metrics.include');
-    else if (suiteDir && !existsSync(join(suiteDir, m.frequencyList))) err('metrics.frequencyList', `can't find ${m.frequencyList} in the suite's folder`);
+    else if (hasFile && !hasFile(m.frequencyList)) err('metrics.frequencyList', `can't find ${m.frequencyList} in the suite's folder`);
   }
 
   if (!Array.isArray(suite.cases) || !suite.cases.length) err('cases', 'add at least one case');

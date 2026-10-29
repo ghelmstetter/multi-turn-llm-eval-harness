@@ -1,6 +1,6 @@
 // Small inline-SVG charts for the report (no libraries, so the report stays one file that
 // opens anywhere). Colors are CSS variables set by the report: --s1 / --s2 for the two
-// targets (fixed order: first target blue, second orange), --tie for ties, --r1..--r3 for
+// targets (fixed order: first target blue, second green), --tie for ties, --r1..--r3 for
 // cost roles. Every mark has a hover tooltip (data-tip), values are direct-labeled, and the
 // tables in the report double as the table view.
 

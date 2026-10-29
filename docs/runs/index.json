@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "runs": [
+    {
+      "id": "first-run",
+      "title": "Plain vs. coached tutor prompt, Gemini Flash",
+      "suite": {
+        "id": "tutor-es",
+        "title": "Conversational AI Spanish Tutor for an English-Speaking Beginner"
+      },
+      "date": "2026-10-26T06:58:31.286Z",
+      "mode": "mirrored",
+      "mock": false,
+      "partial": false,
+      "cases": 7,
+      "turns": 6,
+      "repeats": 1,
+      "targets": [
+        {
+          "id": "flash-plain",
+          "label": "Gemini Flash, plain prompt",
+          "model": "gemini-3.8-flash",
+          "prompt": "plain"
+        },
+        {
+          "id": "flash-coached",
+          "label": "Gemini Flash, coached prompt",
+          "model": "gemini-3.8-flash",
+          "prompt": "coached"
+        }
+      ],
+      "costUsd": 0.7569480000000005,
+      "calls": 404,
+      "verdict": {
+        "strength": "leaning",
+        "leader": "flash-coached",
+        "leaderLabel": "Gemini Flash, coached prompt",
+        "winRate": 0.5535714285714286,
+        "ci": [
+          0.44724157931417263,
+          0.6552155708288121
+        ],
+        "n": 84,
+        "unit": "turns"
+      },
+      "results": "../sample-report/results.json",
+      "report": "../sample-report/report.html"
+    }
+  ]
+}

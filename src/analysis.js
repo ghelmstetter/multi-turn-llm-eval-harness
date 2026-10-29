@@ -1,21 +1,18 @@
 // After a run: re-scoring saved transcripts, per-case results, automatic findings, and
 // rendering analyst notes. None of this calls a model.
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { conversationMetrics, runChecks } from './graders/metrics.js';
 import { summarize, costPerTarget, valueOf, METRIC_BETTER, metricScore } from './run.js';
 
 /**
  * Re-run the code graders (metrics and checks) on a saved run with the suite's current
  * definitions, and recompute the summary. Judge verdicts and rubric scores are kept as they
- * were. Useful after fixing a check or adding a metric: no model calls, no cost.
+ * were. Useful after fixing a check or adding a metric: no model calls, no cost. `suite` comes
+ * from a loader (loadSuite), which attaches the suite's word list.
  */
-export function rescore(results, suiteDir) {
-  const suite = JSON.parse(readFileSync(join(suiteDir, 'suite.json'), 'utf8'));
-  const frequencyFile = suite.metrics?.frequencyList ? join(suiteDir, suite.metrics.frequencyList) : null;
+export function rescore(results, suite) {
   const cases = Object.fromEntries(suite.cases.map((c) => [c.id, c]));
   for (const c of results.conversations) {
-    c.metrics = conversationMetrics(c.history, { ...suite.metrics, frequencyFile });
+    c.metrics = conversationMetrics(c.history, { ...suite.metrics, ranks: suite._frequencyRanks ?? null });
     c.checks = runChecks(c.history, cases[c.case]?.checks ?? []);
   }
   const targets = results.meta.targets.map((t) => ({ ...t, listPrice: t.price }));

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { makeTarget, parseJson } from '../src/targets/index.js';
 import { Budget, BudgetExceeded, estimateRun, costOf } from '../src/budget.js';
 import { conversationMetrics, nativeShare, aboveLevel, runChecks } from '../src/graders/metrics.js';
+import { readFrequencyList, loadSuite } from '../src/load-node.js';
 import { judgePair } from '../src/graders/judge.js';
 import { runConversation, assistantMessages, userMessages } from '../src/conversation.js';
 import { loadPlan, execute, estimateFor, parseArgs } from '../src/cli.js';
@@ -27,7 +28,7 @@ test('metrics: turn-length profile, stacked questions, English share, level, tal
   assert.ok(m.nativeShare > 0.5);
   assert.ok(m.userTalkShare > 0 && m.userTalkShare < 0.2);
   assert.equal(nativeShare('¿Qué quieres hacer hoy?'), 0);
-  const al = aboveLevel('Me encanta la jurisprudencia. Ana vive en Bozeman. That sounds great!', { levelRank: 2000, frequencyFile: 'suites/tutor-es/es-frequency.tsv' });
+  const al = aboveLevel('Me encanta la jurisprudencia. Ana vive en Bozeman. That sounds great!', { levelRank: 2000, ranks: readFrequencyList('suites/tutor-es/es-frequency.tsv') });
   assert.equal(aboveLevel('hola', {}).share, null, 'no word list, no measurement');
   assert.deepEqual(al.words, ['jurisprudencia'], 'names and English are skipped');
 });
@@ -210,7 +211,7 @@ test('word lists with Windows line endings (CRLF) read the same as Unix ones', a
   const { tmpdir } = await import('node:os');
   const crlf = join(mkdtempSync(join(tmpdir(), 'mtle-')), 'list.tsv');
   writeFileSync(crlf, readFileSync('suites/tutor-es/es-frequency.tsv', 'utf8').replace(/\r?\n/g, '\r\n'));
-  assert.deepEqual(aboveLevel('Me encanta la jurisprudencia.', { levelRank: 2000, frequencyFile: crlf }).words, ['jurisprudencia']);
+  assert.deepEqual(aboveLevel('Me encanta la jurisprudencia.', { levelRank: 2000, ranks: readFrequencyList(crlf) }).words, ['jurisprudencia']);
 });
 
 test('re-scoring a saved run, findings, and analysis notes', async () => {
@@ -218,7 +219,7 @@ test('re-scoring a saved run, findings, and analysis notes', async () => {
   const plan = loadPlan(parseArgs(['--mock', '--cases', 'baseline,praise-fishing', '--turns', '3']));
   const results = JSON.parse(JSON.stringify(await execute(plan, { budget: new Budget({ runCapUsd: 1 }) })));
   for (const c of results.conversations) c.checks = []; // as if the checks had changed since the run
-  const re = rescore(results, 'suites/tutor-es');
+  const re = rescore(results, loadSuite('suites/tutor-es'));
   assert.ok(re.conversations.some((c) => c.checks.length), 'checks re-run from the suite');
   assert.ok(re.meta.rescoredAt);
   assert.equal(byCase(re).length, 2);
@@ -229,4 +230,54 @@ test('re-scoring a saved run, findings, and analysis notes', async () => {
   assert.match(html, /Analysis and recommendations/);
   assert.match(html, /<h1>Multi-Turn LLM Eval Harness<\/h1>/);
   assert.match(html, /By case/);
+});
+
+test('the browser loader gives the same results as the Node loader', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { rescore } = await import('../src/analysis.js');
+  // Stand-ins for the browser's location and fetch, serving files from the repo.
+  const saved = { fetch: globalThis.fetch, location: globalThis.location };
+  globalThis.location = { href: 'http://local.test/app/' };
+  globalThis.fetch = async (url) => {
+    const path = new URL(url).pathname.slice(1);
+    try { const text = readFileSync(path, 'utf8'); return { ok: true, status: 200, json: async () => JSON.parse(text), text: async () => text }; } catch { return { ok: false, status: 404 }; }
+  };
+  try {
+    const web = await import('../src/load-browser.js');
+    const suite = await web.loadSuite('/suites/tutor-es/');
+    assert.ok(suite._frequencyRanks?.size > 1000, 'word list attached');
+    assert.deepEqual(web.validateLoaded(suite), []);
+    const sample = () => JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+    const a = rescore(sample(), loadSuite('suites/tutor-es'));
+    const b = rescore(sample(), suite);
+    assert.deepEqual(b.summary, a.summary);
+    assert.deepEqual(b.conversations.map((c) => c.metrics), a.conversations.map((c) => c.metrics));
+  } finally {
+    globalThis.fetch = saved.fetch;
+    if (saved.location === undefined) delete globalThis.location; else globalThis.location = saved.location;
+  }
+});
+
+test('the run index lists published runs, newest first, replacing by id', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { runEntry, upsertIndex } = await import('../src/run-index.js');
+  const results = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  const e = runEntry(results, { id: 'first', paths: { results: 'r.json', report: 'r.html' } });
+  assert.equal(e.verdict.strength, 'leaning');
+  assert.equal(e.verdict.leaderLabel, 'Gemini Flash, coached prompt');
+  assert.equal(e.targets.length, 2);
+  let idx = upsertIndex(null, e);
+  idx = upsertIndex(idx, { ...e, id: 'later', date: '2027-01-01T00:00:00Z' });
+  idx = upsertIndex(idx, { ...e, title: 'renamed' });
+  assert.deepEqual(idx.runs.map((r) => r.id), ['later', 'first']);
+  assert.equal(idx.runs[1].title, 'renamed');
+});
+
+test('a daily spend store carries spending across runs', () => {
+  let kept = 0.5;
+  const budget = new Budget({ runCapUsd: 1, dailyCapUsd: 0.6, spendStore: { read: () => kept, write: (usd) => { kept = usd; } } });
+  assert.equal(budget.spentToday, 0.5);
+  budget.charge('assistant', { input: 1e6, output: 0 }, { input: 0.2, output: 0 });
+  assert.ok(Math.abs(kept - 0.7) < 1e-9);
+  assert.throws(() => budget.check(), /Daily evaluation cap/);
 });

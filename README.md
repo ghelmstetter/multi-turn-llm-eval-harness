@@ -145,11 +145,21 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 16 tests, no keys needed
+npm test        # 19 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
 The demo writes `results/demo/report.html`, a single file that opens in any browser. Mock models are deterministic stand-ins that exercise the whole pipeline; the report labels mock runs clearly, and their numbers say nothing about real models.
+
+### Web app
+
+The harness also has a browser front end, built on the same engine code as the command line, so both always report the same numbers. It runs entirely in the browser, with no server.
+
+- **Explore runs:** every published run, with its verdict, cost and full report. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm run app` (then http://localhost:8787/app/).
+- **Rate blind** (next): pick the better of two anonymized replies, then see how often the LLM judge agreed with you.
+- **Run an eval** (planned): edit a suite and run it in the browser, with your own API key or free mock models.
+
+To add a run to the gallery: `node src/cli.js report <results.json> --publish docs/runs/index.json --title "…"`.
 
 ### Reading the report
 
@@ -289,10 +299,15 @@ src/
   graders/metrics.js  code metrics and case checks
   graders/judge.js    rubric and pairwise judges, with bias controls
   budget.js           cost tracking, caps, estimates
+  load-node.js        loading suites and word lists from disk (CLI)
+  load-browser.js     the same over HTTP (web app), so the engine never touches files itself
+  run-index.js        the gallery's list of published runs
   targets/            Gemini, OpenAI, Anthropic and mock adapters, retries
-  report/             a self-contained HTML report: charts, glossary, verdict
+  report/             a self-contained HTML report: charts, glossary, verdict, shared styles
 suites/               the Spanish tutor and customer-support suites
-docs/                 writing a suite
+docs/                 the GitHub Pages site: the web app (app/), published runs, the sample
+                      report, and the guide to writing a suite
+scripts/serve.js      local server for the web app, laid out like GitHub Pages
 test/                 tests (node --test), no network or keys needed
 ```
 

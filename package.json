@@ -9,6 +9,7 @@
   "bin": { "mtle": "src/cli.js" },
   "scripts": {
     "test": "node --test",
+    "app": "node scripts/serve.js",
     "demo": "node src/cli.js run --suite suites/tutor-es --targets examples/targets.json --mode mirrored --cases baseline,repeated-mistake --turns 4 --mock --yes --out results/demo"
   },
   "keywords": ["llm", "evaluation", "evals", "multi-turn", "llm-as-a-judge", "pairwise", "conversational-ai"]

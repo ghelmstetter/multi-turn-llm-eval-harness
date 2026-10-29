@@ -1,20 +1,21 @@
 // Spending: every model call is charged to a budget with a per-run cap and a daily cap.
 // Repeats, mirrored runs and judge calls multiply cost quickly, so a run shows an estimate
 // first and stops cleanly (keeping its results, marked partial) if a cap is reached.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 
 export class BudgetExceeded extends Error {}
 
 export const costOf = (price, usage) => ((usage?.input ?? 0) * (price?.input ?? 0) + (usage?.output ?? 0) * (price?.output ?? 0)) / 1e6;
 
 export class Budget {
-  /** dailyFile: where today's evaluation spend is kept (null = don't track across runs). */
-  constructor({ runCapUsd = 1, dailyCapUsd = 5, dailyFile = null, today = new Date().toISOString().slice(0, 10) } = {}) {
+  /**
+   * spendStore: where today's evaluation spend is kept across runs, as { read(): usd, write(usd) }
+   * (null = don't track across runs). The CLI keeps it in a file, the browser in local storage.
+   */
+  constructor({ runCapUsd = 1, dailyCapUsd = 5, spendStore = null } = {}) {
     this.runCapUsd = runCapUsd;
     this.dailyCapUsd = dailyCapUsd;
-    this.file = dailyFile ? join(dailyFile, `spend-${today}.json`) : null;
-    this.spentBefore = this.file ? readSpend(this.file) : 0;
+    this.store = spendStore;
+    this.spentBefore = this.store ? Number(this.store.read()) || 0 : 0;
     this.spent = 0;
     this.byRole = {};
     this.byTarget = {}; // the models under test: what each costs per reply
@@ -42,21 +43,13 @@ export class Budget {
       t.inputTokens += usage?.input ?? 0;
       t.outputTokens += usage?.output ?? 0;
     }
-    if (this.file) writeSpend(this.file, this.spentToday);
+    if (this.store) this.store.write(this.spentToday);
     return usd;
   }
 
   summary() {
     return { spentUsd: this.spent, calls: this.calls, byRole: this.byRole, byTarget: this.byTarget, runCapUsd: this.runCapUsd, dailyCapUsd: this.dailyCapUsd, spentTodayUsd: this.spentToday };
   }
-}
-
-function readSpend(file) {
-  try { return JSON.parse(readFileSync(file, 'utf8')).usd ?? 0; } catch { return 0; }
-}
-function writeSpend(file, usd) {
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ usd }));
 }
 
 /** Call a target, charging the budget. role: 'tutor' | 'user' | 'judge'. */

@@ -3,10 +3,11 @@
 //   mtle estimate --suite <dir> --targets <file> [options]   show the cost estimate only
 //   mtle run      --suite <dir> --targets <file> [options]   run, save results.json and report.html
 //   mtle validate --suite <dir> --targets <file>               check a suite and targets file, explaining any problems
-//   mtle report   <results.json> [--suite <dir>] [--notes <file.md>]
+//   mtle report   <results.json> [--suite <dir>] [--notes <file.md>] [--publish <index.json>]
 //                 re-render a report; with --suite, re-score the saved transcripts with the suite's
 //                 current metrics and checks (free: no model calls); with --notes, add an
-//                 analysis section written by you (or an assistant)
+//                 analysis section written by you (or an assistant); with --publish, list the run
+//                 in the web app's gallery index (optional --id and --title)
 // Options:
 //   --mode mirrored|independent   (default mirrored)
 //   --compare a,b                 target ids to compare (default: the first two)
@@ -20,14 +21,15 @@
 //   --yes                         don't ask before running
 //   --out <dir>                   output folder (default results/<timestamp>-<suite>-<mode>)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative, dirname, basename, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { makeTarget } from './targets/index.js';
 import { Budget, estimateRun } from './budget.js';
 import { runMirrored, runIndependent, summarize, costPerTarget, valueOf } from './run.js';
 import { renderReport } from './report/html.js';
-import { validateSuite } from './suite.js';
+import { loadSuite, validateLoaded, fileSpendStore } from './load-node.js';
 import { rescore } from './analysis.js';
+import { runEntry, upsertIndex } from './run-index.js';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -45,11 +47,9 @@ export function parseArgs(argv) {
 
 export function loadPlan(args, { fetchImpl = fetch, env = process.env } = {}) {
   const suiteDir = resolve(args.suite ?? 'suites/tutor-es');
-  const suite = JSON.parse(readFileSync(join(suiteDir, 'suite.json'), 'utf8'));
+  const suite = loadSuite(suiteDir); // with its word list, if it has one
   const cfg = JSON.parse(readFileSync(resolve(args.targets ?? 'examples/targets.json'), 'utf8'));
-  const problems = validateSuite(suite, cfg, suiteDir);
-  // A suite's own word list (for "words above level"), relative to the suite's folder.
-  if (suite.metrics?.frequencyList) Object.defineProperty(suite, '_frequencyFile', { value: join(suiteDir, suite.metrics.frequencyList), enumerable: false });
+  const problems = validateLoaded(suite, cfg);
   if (problems.length) throw new Error(`The suite or targets file needs fixing:\n  - ${problems.join('\n  - ')}`);
   const mock = Boolean(args.mock);
   const mode = args.mode ?? 'mirrored';
@@ -124,7 +124,7 @@ async function main(argv) {
     const file = args._[1];
     let results = JSON.parse(readFileSync(file, 'utf8'));
     if (args.suite) {
-      results = rescore(results, resolve(args.suite));
+      results = rescore(results, loadSuite(args.suite));
       writeFileSync(file, JSON.stringify(results, null, 2));
       console.log('Re-scored the saved transcripts with the suite\'s current metrics and checks.');
     }
@@ -135,6 +135,17 @@ async function main(argv) {
     const outFile = /results\.json$/.test(file) ? file.replace(/results\.json$/, 'report.html') : `${file}.html`;
     writeFileSync(outFile, renderReport(results));
     console.log(`Wrote ${outFile}`);
+    if (args.publish) {
+      // Add the run to a gallery index (e.g. docs/runs/index.json), with paths relative to it.
+      const indexFile = resolve(args.publish);
+      let index = null;
+      try { index = JSON.parse(readFileSync(indexFile, 'utf8')); } catch { /* a new index */ }
+      const rel = (f) => relative(dirname(indexFile), resolve(f)).split(sep).join('/');
+      const id = args.id ?? basename(dirname(resolve(file)));
+      mkdirSync(dirname(indexFile), { recursive: true });
+      writeFileSync(indexFile, `${JSON.stringify(upsertIndex(index, runEntry(results, { id, title: args.title ?? null, paths: { results: rel(file), report: rel(outFile) } })), null, 2)}\n`);
+      console.log(`Listed it as "${id}" in ${args.publish}`);
+    }
     return;
   }
   if (cmd === 'validate') {
@@ -143,7 +154,7 @@ async function main(argv) {
     return;
   }
   if (cmd !== 'run' && cmd !== 'estimate') {
-    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 18).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1).filter((l, i, a) => a.slice(0, i + 1).every((x) => x.startsWith('//'))).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
     process.exitCode = cmd ? 1 : 0;
     return;
   }
@@ -151,7 +162,7 @@ async function main(argv) {
   const missing = [...new Set([...plan.targets, plan.user, plan.judge].filter((t) => !t.ready).map((t) => t.keyEnv))];
   if (missing.length && cmd === 'run') throw new Error(`Missing API key: set ${missing.join(' and ')} (in the environment or a .env file), or use --mock.`);
   const est = estimateFor(plan);
-  const budget = new Budget({ runCapUsd: plan.runCapUsd, dailyCapUsd: plan.dailyCapUsd, dailyFile: plan.mock ? null : resolve('results') });
+  const budget = new Budget({ runCapUsd: plan.runCapUsd, dailyCapUsd: plan.dailyCapUsd, spendStore: plan.mock ? null : fileSpendStore(resolve('results')) });
   console.log(`${plan.suite.title}: ${plan.mode} mode, ${plan.cases.length} case(s) × ${plan.repeats} repeat(s) × ${plan.turns} turns`);
   console.log(`Targets: ${plan.targets.map((t) => t.id).join(' vs ')} · judge: ${plan.judge.model ?? plan.judge.vendor}${plan.mock ? ' · MOCK (no cost)' : ''}`);
   console.log(`Estimated cost: ${fmt(est.totalUsd)} (assistants ${fmt(est.assistantUsd)}, simulated user ${fmt(est.userUsd)}, judge ${fmt(est.judgeUsd)}); errs high.`);

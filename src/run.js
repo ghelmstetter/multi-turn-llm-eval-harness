@@ -25,7 +25,7 @@ async function assistantTurn(budget, target, suite, history) {
 }
 
 async function finishConversation({ conv, suite, kase, judge, budget, rubric }) {
-  conv.metrics = conversationMetrics(conv.history, { ...suite.metrics, frequencyFile: suite._frequencyFile ?? null });
+  conv.metrics = conversationMetrics(conv.history, { ...suite.metrics, ranks: suite._frequencyRanks ?? null });
   conv.checks = runChecks(conv.history, kase.checks);
   if (rubric && !conv.partial && conv.history.length) {
     try { conv.rubric = await judgeRubric({ judge, budget, suite, kase, history: conv.history }); } catch (e) {

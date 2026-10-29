@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Turn LLM Eval Harness</title>
+<meta name="description" content="Rate, explore and run multi-turn LLM evaluations in the browser.">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<main>
+  <header class="app-head">
+    <h1>Multi-Turn LLM Eval Harness</h1>
+    <p class="subhead">Evaluate LLMs in whole conversations, not single prompts</p>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <a href="#explore" role="tab" data-tab="explore">Explore runs</a>
+      <a href="#rate" role="tab" data-tab="rate">Rate blind</a>
+      <a href="#run" role="tab" data-tab="run">Run an eval</a>
+    </nav>
+  </header>
+
+  <section id="explore" class="panel" role="tabpanel" hidden>
+    <p class="lead">Saved runs, each with its full interactive report. Every number in a report has a hover tooltip and an ⓘ explanation.</p>
+    <div id="runs" class="runs" aria-live="polite"><p class="muted">Loading runs…</p></div>
+  </section>
+
+  <section id="rate" class="panel" role="tabpanel" hidden>
+    <div class="soon">
+      <h2>Rate blind <span class="tag">coming next</span></h2>
+      <p>Compare two anonymized replies at a time and pick the better one, without knowing which model or prompt wrote it. Then see how often the LLM judge agreed with you, case by case.</p>
+    </div>
+  </section>
+
+  <section id="run" class="panel" role="tabpanel" hidden>
+    <div class="soon">
+      <h2>Run an eval <span class="tag">planned</span></h2>
+      <p>Edit a suite, pick models, and run it here with your own API key (or free, with mock models), watching the conversations arrive turn by turn.</p>
+    </div>
+  </section>
+
+  <footer class="muted small">
+    <a href="https://github.com/ghelmstetter/multi-turn-llm-eval-harness">Source on GitHub</a> · runs entirely in your browser; nothing you do here is sent anywhere
+  </footer>
+</main>
+<div id="tip" role="tooltip" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
