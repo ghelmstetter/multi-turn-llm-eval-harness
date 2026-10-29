@@ -7,7 +7,8 @@
 //                 re-render a report; with --suite, re-score the saved transcripts with the suite's
 //                 current metrics and checks (free: no model calls); with --notes, add an
 //                 analysis section written by you (or an assistant); with --publish, list the run
-//                 in the web app's gallery index (optional --id and --title)
+//                 in the web app's gallery index (optional --id, --title, and --home for the
+//                 report's link back to the gallery)
 // Options:
 //   --mode mirrored|independent   (default mirrored)
 //   --compare a,b                 target ids to compare (default: the first two)
@@ -133,7 +134,10 @@ async function main(argv) {
       writeFileSync(file, JSON.stringify(results, null, 2));
     }
     const outFile = /results\.json$/.test(file) ? file.replace(/results\.json$/, 'report.html') : `${file}.html`;
-    writeFileSync(outFile, renderReport(results));
+    // A published report links back to the gallery: the web app beside the index's folder
+    // (docs/runs → docs/app), or wherever --home says.
+    const home = args.publish ? (args.home ?? `${relative(dirname(resolve(outFile)), join(dirname(resolve(args.publish)), '..', 'app')).split(sep).join('/')}/#explore`) : args.home ?? null;
+    writeFileSync(outFile, renderReport(results, { home }));
     console.log(`Wrote ${outFile}`);
     if (args.publish) {
       // Add the run to a gallery index (e.g. docs/runs/index.json), with paths relative to it.

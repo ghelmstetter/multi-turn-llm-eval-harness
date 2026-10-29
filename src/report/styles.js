@@ -6,7 +6,7 @@ export const REPORT_CSS = `:root{color-scheme:light;--bg:#f9f9f7;--fg:#0b0b0b;--
   --s1:#3987e5;--s2:#00873c;--tie:#5b5a55;--r1:#199e70;--r2:#c98500;--r3:#d55181;--s1w:#18263a;--s2w:#13281b;--u:#262624;--band:#199e7033}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1000px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:1.5rem;margin:0}.subhead{font-size:1.1rem;color:var(--accent);margin:2px 0 8px;font-weight:500}h2{font-size:1.15rem;margin:34px 0 6px}h3{font-size:1rem;margin:18px 0 6px}
+h1{font-size:1.5rem;margin:0}.back{margin:0 0 10px;font-size:.9rem}.back a{color:var(--accent);text-decoration:none}.back a:hover{text-decoration:underline}.subhead{font-size:1.1rem;color:var(--accent);margin:2px 0 8px;font-weight:500}h2{font-size:1.15rem;margin:34px 0 6px}h3{font-size:1rem;margin:18px 0 6px}
 .muted{color:var(--muted)}.small{font-size:.85rem}.lead{color:var(--fg2);margin:0 0 10px}
 .banner{border:2px solid var(--bad);color:var(--bad);border-radius:10px;padding:8px 12px;margin:12px 0}
 table{border-collapse:collapse;width:100%;margin:8px 0;background:var(--card)}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}

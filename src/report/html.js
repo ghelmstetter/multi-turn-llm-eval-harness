@@ -114,7 +114,8 @@ function shareRows(meta, conversations, results, label) {
   return [{ label: 'Whole conversations', ...tally(results.pairs ?? []) }];
 }
 
-export function renderReport(results) {
+/** opts.home: a link back to the web app's run gallery, for published reports. */
+export function renderReport(results, { home = null } = {}) {
   const { meta, summary, conversations } = results;
   const ids = meta.targets.map((t) => t.id);
   const label = Object.fromEntries(meta.targets.map((t) => [t.id, t.label ?? t.id]));
@@ -277,7 +278,7 @@ export function renderReport(results) {
 <title>Eval report: ${esc(meta.suite.title)}</title>
 <style>
 ${REPORT_CSS}</style></head><body><main>
-<h1>Multi-Turn LLM Eval Harness</h1>
+${home ? `<p class="back"><a href="${esc(home)}">← All runs</a></p>` : ''}<h1>Multi-Turn LLM Eval Harness</h1>
 <p class="subhead">Report: ${esc(meta.suite.title)}</p>
 <p class="muted small">${esc(meta.mode)} mode ${meta.mode === 'mirrored' ? info('mirrored') : ''} · ${meta.cases.length} case(s) × ${meta.repeats} repeat(s) × ${meta.turns} turns · judge: ${esc(meta.judge.vendor)} ${esc(meta.judge.model ?? '')} · simulated user ${info('simulatedUser')}: ${esc(meta.user.vendor)} ${esc(meta.user.model ?? '')} · ${esc(meta.startedAt)} · <a href="#glossary">Glossary</a></p>
 ${meta.mock ? '<div class="banner"><b>Mock run.</b> No model was called: these numbers only demonstrate the report format.</div>' : ''}
