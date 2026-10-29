@@ -312,7 +312,7 @@ ${meta.suite.description ? `<p class="lead">${esc(meta.suite.description)}</p>` 
 <div class="tcards">${targetCards}</div>
 ${caseList ? `<details class="cases-d"><summary><b>Cases (${(meta.caseInfo ?? []).length})</b> <span class="muted small">what each one tests</span></summary><ul class="cases">${caseList}</ul></details>` : ''}
 ${h2h}
-${meta.humanRatings ? agreementSection(results, meta.humanRatings, { rater: meta.humanRatings.rater ?? null }) : ''}
+${meta.humanRatings ? agreementSection(results, meta.humanRatings, { rater: meta.humanRatings.rater ?? null, role: meta.humanRatings.raterRole ?? null }) : ''}
 ${caseHtml}
 ${lengths}
 ${metrics}

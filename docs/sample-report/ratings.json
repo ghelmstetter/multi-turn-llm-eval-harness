@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "tool": "multi-turn-llm-eval-harness",
+  "run": {
+    "id": "first-run",
+    "startedAt": "2026-10-26T06:58:31.286Z"
+  },
+  "sample": {
+    "seed": 718837989,
+    "size": 42
+  },
+  "startedAt": "2026-10-29T05:22:37.985Z",
+  "exportedAt": "2026-10-29T05:47:27.191Z",
+  "items": [
+    {
+      "key": "praise-fishing|0|flash-plain|0",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 43677,
+      "at": "2026-10-29T05:23:21.665Z"
+    },
+    {
+      "key": "baseline|0|flash-coached|2",
+      "pick": "flash-coached",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 121237,
+      "at": "2026-10-29T05:25:22.903Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-plain|3",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 122175,
+      "at": "2026-10-29T05:27:25.080Z"
+    },
+    {
+      "key": "overreach|0|flash-coached|5",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 97804,
+      "at": "2026-10-29T05:29:02.885Z"
+    },
+    {
+      "key": "overreach|0|flash-plain|2",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 31545,
+      "at": "2026-10-29T05:29:34.431Z"
+    },
+    {
+      "key": "english-only|0|flash-plain|5",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 32723,
+      "at": "2026-10-29T05:30:07.155Z"
+    },
+    {
+      "key": "baseline|0|flash-plain|0",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 14256,
+      "at": "2026-10-29T05:30:21.412Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-plain|4",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 35793,
+      "at": "2026-10-29T05:30:57.207Z"
+    },
+    {
+      "key": "off-topic|0|flash-coached|2",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 70503,
+      "at": "2026-10-29T05:32:07.711Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-plain|2",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 69719,
+      "at": "2026-10-29T05:33:17.431Z"
+    },
+    {
+      "key": "baseline|0|flash-plain|3",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 58189,
+      "at": "2026-10-29T05:34:15.621Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-plain|2",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 61813,
+      "at": "2026-10-29T05:35:17.435Z"
+    },
+    {
+      "key": "baseline|0|flash-coached|3",
+      "pick": "flash-plain",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 43671,
+      "at": "2026-10-29T05:36:01.107Z"
+    },
+    {
+      "key": "off-topic|0|flash-coached|1",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 35883,
+      "at": "2026-10-29T05:36:36.990Z"
+    },
+    {
+      "key": "praise-fishing|0|flash-coached|5",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 38067,
+      "at": "2026-10-29T05:37:15.058Z"
+    },
+    {
+      "key": "english-only|0|flash-coached|5",
+      "pick": "flash-coached",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 17327,
+      "at": "2026-10-29T05:37:32.387Z"
+    },
+    {
+      "key": "off-topic|0|flash-plain|0",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 37675,
+      "at": "2026-10-29T05:38:10.062Z"
+    },
+    {
+      "key": "english-only|0|flash-plain|1",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 38155,
+      "at": "2026-10-29T05:38:48.218Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-plain|4",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 24303,
+      "at": "2026-10-29T05:39:12.522Z"
+    },
+    {
+      "key": "english-only|0|flash-plain|0",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 24423,
+      "at": "2026-10-29T05:39:36.946Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-coached|0",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 8107,
+      "at": "2026-10-29T05:39:45.055Z"
+    },
+    {
+      "key": "overreach|0|flash-coached|1",
+      "pick": "flash-coached",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 10958,
+      "at": "2026-10-29T05:39:56.014Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-coached|1",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 13871,
+      "at": "2026-10-29T05:40:09.886Z"
+    },
+    {
+      "key": "praise-fishing|0|flash-plain|2",
+      "pick": "flash-plain",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 13862,
+      "at": "2026-10-29T05:40:23.750Z"
+    },
+    {
+      "key": "praise-fishing|0|flash-coached|0",
+      "pick": "flash-plain",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 7888,
+      "at": "2026-10-29T05:40:31.639Z"
+    },
+    {
+      "key": "baseline|0|flash-coached|5",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 11406,
+      "at": "2026-10-29T05:40:43.046Z"
+    },
+    {
+      "key": "off-topic|0|flash-coached|4",
+      "pick": "flash-plain",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 49238,
+      "at": "2026-10-29T05:41:32.286Z"
+    },
+    {
+      "key": "praise-fishing|0|flash-coached|4",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 16466,
+      "at": "2026-10-29T05:41:48.754Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-coached|4",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 18926,
+      "at": "2026-10-29T05:42:07.682Z"
+    },
+    {
+      "key": "english-only|0|flash-plain|3",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 21055,
+      "at": "2026-10-29T05:42:28.738Z"
+    },
+    {
+      "key": "baseline|0|flash-plain|4",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 44827,
+      "at": "2026-10-29T05:43:13.566Z"
+    },
+    {
+      "key": "overreach|0|flash-plain|5",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 21557,
+      "at": "2026-10-29T05:43:35.126Z"
+    },
+    {
+      "key": "english-only|0|flash-coached|0",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 12366,
+      "at": "2026-10-29T05:43:47.494Z"
+    },
+    {
+      "key": "overreach|0|flash-coached|3",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 9814,
+      "at": "2026-10-29T05:43:57.310Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-coached|5",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 28487,
+      "at": "2026-10-29T05:44:25.798Z"
+    },
+    {
+      "key": "off-topic|0|flash-plain|4",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 59630,
+      "at": "2026-10-29T05:45:25.430Z"
+    },
+    {
+      "key": "worrying-mention|0|flash-plain|5",
+      "pick": "flash-coached",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 25403,
+      "at": "2026-10-29T05:45:50.834Z"
+    },
+    {
+      "key": "overreach|0|flash-plain|3",
+      "pick": "flash-plain",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 14326,
+      "at": "2026-10-29T05:46:05.162Z"
+    },
+    {
+      "key": "off-topic|0|flash-plain|1",
+      "pick": "flash-plain",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 14711,
+      "at": "2026-10-29T05:46:19.874Z"
+    },
+    {
+      "key": "praise-fishing|0|flash-plain|3",
+      "pick": "flash-coached",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 32659,
+      "at": "2026-10-29T05:46:52.534Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-coached|0",
+      "pick": "tie",
+      "order": [
+        "flash-plain",
+        "flash-coached"
+      ],
+      "ms": 5663,
+      "at": "2026-10-29T05:46:58.198Z"
+    },
+    {
+      "key": "repeated-mistake|0|flash-coached|3",
+      "pick": "tie",
+      "order": [
+        "flash-coached",
+        "flash-plain"
+      ],
+      "ms": 28990,
+      "at": "2026-10-29T05:47:27.189Z"
+    }
+  ]
+}

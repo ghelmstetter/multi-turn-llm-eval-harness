@@ -3,6 +3,7 @@
 // the report (which shows the agreement). Ratings come from mirrored runs, where every turn has
 // two candidate replies and a judge verdict.
 import { wilson } from './run.js';
+import { nativeShare } from './graders/metrics.js';
 
 /** A stable id for one judged turn: case, repeat, whose conversation, and the turn number. */
 export const itemKey = (conv, h) => `${conv.case}|${conv.repeat ?? 0}|${conv.main}|${h.turn}`;
@@ -47,15 +48,24 @@ const shuffle = (xs, rand) => { const a = [...xs]; for (let i = a.length - 1; i 
 /**
  * A sample of n items balanced across cases (as even as the cases allow), in random order,
  * each with a random left/right order for the two replies. Same seed, same sample.
+ * Twins are rated once: in mirrored mode a case's first turn appears on both targets' tracks
+ * with the same context, so only one of them (chosen at random) can be in a sample.
  */
 export function sampleItems(items, n, seed = 1, targetIds = null) {
   const rand = rng(seed);
   const byCase = new Map();
-  for (const it of items) (byCase.get(it.case) ?? byCase.set(it.case, []).get(it.case)).push(it);
+  const seen = new Set();
+  for (const it of shuffle(items, rand)) {
+    const twin = `${it.case}\n${JSON.stringify(it.context)}`;
+    if (seen.has(twin)) continue;
+    seen.add(twin);
+    (byCase.get(it.case) ?? byCase.set(it.case, []).get(it.case)).push(it);
+  }
   const pools = [...byCase.values()].map((xs) => shuffle(xs, rand));
   const picked = [];
   // Take one from each case in turn until n are picked or every case runs out.
-  for (let k = 0; picked.length < Math.min(n, items.length); k++) for (const p of pools) if (p[k] && picked.length < n) picked.push(p[k]);
+  const total = pools.reduce((t, p) => t + p.length, 0);
+  for (let k = 0; picked.length < Math.min(n, total); k++) for (const p of pools) if (p[k] && picked.length < n) picked.push(p[k]);
   const ids = targetIds ?? Object.keys(items[0]?.replies ?? {});
   return shuffle(picked, rand).map((it) => ({ key: it.key, order: rand() < 0.5 ? [ids[0], ids[1]] : [ids[1], ids[0]] }));
 }
@@ -93,4 +103,42 @@ export function agreement(results, ratings) {
     judge: verdictOf((r) => r.item.judge.winner),
     disagreements: rated.filter((r) => !same(r)).map((r) => ({ key: r.key, case: r.item.case, turn: r.item.turn, human: r.pick, judge: r.item.judge.winner, reason: r.reason ?? '' })),
   };
+}
+
+const LANG = { en: 'English', es: 'Spanish', it: 'Italian', fr: 'French', de: 'German', pt: 'Portuguese' };
+const wordCount = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
+
+/**
+ * What each rater tended to prefer, on the turns the human rated: how often each picked the
+ * longer reply, and (for language-learning suites, which set metrics.target and .native) the
+ * reply with more of the learner's native language. Only pairs that clearly differ count
+ * (lengths 20% apart, native-language share 10 points apart), and only turns where that rater
+ * picked a winner. A large gap between the human and the judge points to why they disagree.
+ */
+export function preferences(results, ratings) {
+  const items = new Map(ratingItems(results).map((it) => [it.key, it]));
+  const rated = (ratings?.items ?? []).filter((r) => r.pick && r.pick !== 'skip' && items.has(r.key)).map((r) => ({ pick: r.pick, item: items.get(r.key) }));
+  const m = results.meta.suite?.metrics ?? {};
+  const lang = m.native && m.target ? { target: m.target, native: m.native } : null;
+  const traits = [
+    { id: 'longer', label: 'the longer reply', value: (t) => wordCount(t), differ: (a, b) => Math.abs(a - b) >= 0.2 * Math.max(a, b) },
+    ...(lang ? [{ id: 'native', label: `the reply with more ${LANG[lang.native] ?? lang.native}`, value: (t) => nativeShare(t, lang), differ: (a, b) => Math.abs(a - b) >= 0.1 }] : []),
+  ];
+  return traits.map((tr) => {
+    const tally = (pickOf) => {
+      let k = 0;
+      let n = 0;
+      for (const r of rated) {
+        const p = pickOf(r);
+        if (p === 'tie') continue;
+        const [x, y] = Object.keys(r.item.replies);
+        const [vx, vy] = [tr.value(r.item.replies[x]), tr.value(r.item.replies[y])];
+        if (!tr.differ(vx, vy)) continue;
+        n++;
+        if (p === (vx > vy ? x : y)) k++;
+      }
+      return share(k, n);
+    };
+    return { id: tr.id, label: tr.label, human: tally((r) => r.pick), judge: tally((r) => r.item.judge.winner) };
+  });
 }

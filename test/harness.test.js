@@ -296,6 +296,10 @@ test('blind rating: items, a balanced repeatable sample, and judge-vs-human agre
   for (const x of s) { const c = x.key.split('|')[0]; perCase[c] = (perCase[c] ?? 0) + 1; }
   assert.deepEqual(Object.values(perCase), Array(7).fill(6), 'balanced across the 7 cases');
   assert.ok(s.some((x) => x.order[0] === 'flash-plain') && s.some((x) => x.order[0] === 'flash-coached'), 'reply order varies');
+  const everything = sampleItems(items, 999, 3);
+  assert.equal(everything.length, 77, 'each case\'s twin first turn is rated once (84 - 7)');
+  const ctx = new Set(everything.map((x) => { const it = items.find((i) => i.key === x.key); return `${it.case}${JSON.stringify(it.context)}`; }));
+  assert.equal(ctx.size, 77, 'no two sampled turns share a context');
   // A rater who always agrees with the judge, except on one turn they skip and one they flip.
   const byKey = new Map(items.map((it) => [it.key, it]));
   const picks = s.map((x, i) => ({ key: x.key, pick: i === 0 ? 'skip' : i === 1 ? (byKey.get(x.key).judge.winner === 'flash-plain' ? 'flash-coached' : 'flash-plain') : byKey.get(x.key).judge.winner }));
@@ -312,6 +316,7 @@ test('a report with blind ratings shows the judge-vs-human section', async () =>
   const { readFileSync } = await import('node:fs');
   const { ratingItems } = await import('../src/ratings.js');
   const results = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  delete results.meta.humanRatings; // the sample run ships with real ratings
   assert.doesNotMatch(renderReport(results), /Judge vs\. human/);
   const items = ratingItems(results).slice(0, 10).map((it) => ({ key: it.key, pick: it.judge.winner }));
   results.meta.humanRatings = { rater: 'Test', items };
@@ -319,4 +324,19 @@ test('a report with blind ratings shows the judge-vs-human section', async () =>
   assert.match(html, /Judge vs\. human/);
   assert.match(html, /Test rated 10 turns blind/);
   assert.match(html, /100%/);
+});
+
+test('what each rater preferred: longer replies, and more native language', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { ratingItems, preferences } = await import('../src/ratings.js');
+  const { nativeShare: ns } = await import('../src/graders/metrics.js');
+  const results = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  // A rater who always picks the reply with more English.
+  const items = ratingItems(results).map((it) => { const [x, y] = Object.keys(it.replies); return { key: it.key, pick: ns(it.replies[x]) >= ns(it.replies[y]) ? x : y }; });
+  const p = preferences(results, { items });
+  assert.deepEqual(p.map((x) => x.id), ['longer', 'native']);
+  const native = p.find((x) => x.id === 'native');
+  assert.equal(native.human.rate, 1);
+  assert.ok(native.judge.rate < 0.6, 'the judge does not share that preference');
+  assert.match(renderReport({ ...results, meta: { ...results.meta, humanRatings: { items } } }), /What each rater preferred/);
 });

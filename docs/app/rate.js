@@ -43,7 +43,7 @@ function startScreen(runs, loadResults) {
   const refresh = async () => {
     const run = runs.find((r) => r.id === sel.value);
     const per = [3, 6].map((k) => k * run.cases);
-    nSel.innerHTML = per.map((n) => `<option value="${n}"${n === per[1] ? ' selected' : ''}>${n} turns (about ${Math.round(n * 0.6)} minutes)</option>`).join('') + `<option value="0">All of them</option>`;
+    nSel.innerHTML = per.map((n) => `<option value="${n}"${n === per[1] ? ' selected' : ''}>${n} turns (about ${Math.round(n * 0.6)} minutes)</option>`).join('') + `<option value="0">All of them (each case's shared first turn once)</option>`;
     const saved = store.get(keyOf(run.id));
     const done = saved ? Object.keys(saved.picks ?? {}).length : 0;
     box.querySelector('#rate-resume').innerHTML = saved && done
