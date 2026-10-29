@@ -20,7 +20,7 @@ export function rescore(results, suite) {
   summary.cost = costPerTarget(targets, results.meta.budget?.byTarget);
   if (summary.verdict) summary.verdict.value = valueOf(summary.verdict, summary.cost);
   results.summary = summary;
-  results.meta.suite = { ...results.meta.suite, title: suite.title, description: suite.description, metrics: suite.metrics };
+  results.meta.suite = { ...results.meta.suite, title: suite.title, description: suite.description, metrics: suite.metrics, pairwiseQuestion: suite.pairwiseQuestion };
   results.meta.rubric = suite.rubric;
   results.meta.promptNotes = suite.promptNotes ?? results.meta.promptNotes;
   results.meta.caseInfo = results.meta.cases.map((id) => ({ id, title: cases[id]?.title ?? id, goal: cases[id]?.goal ?? '' }));

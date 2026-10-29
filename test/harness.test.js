@@ -281,3 +281,42 @@ test('a daily spend store carries spending across runs', () => {
   assert.ok(Math.abs(kept - 0.7) < 1e-9);
   assert.throws(() => budget.check(), /Daily evaluation cap/);
 });
+
+test('blind rating: items, a balanced repeatable sample, and judge-vs-human agreement', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { ratingItems, sampleItems, agreement } = await import('../src/ratings.js');
+  const results = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  const items = ratingItems(results);
+  assert.equal(items.length, 84, 'every judged turn of the sample run');
+  assert.equal(Object.keys(items[0].replies).length, 2);
+  const s = sampleItems(items, 42, 7);
+  assert.equal(s.length, 42);
+  assert.deepEqual(sampleItems(items, 42, 7), s, 'same seed, same sample');
+  const perCase = {};
+  for (const x of s) { const c = x.key.split('|')[0]; perCase[c] = (perCase[c] ?? 0) + 1; }
+  assert.deepEqual(Object.values(perCase), Array(7).fill(6), 'balanced across the 7 cases');
+  assert.ok(s.some((x) => x.order[0] === 'flash-plain') && s.some((x) => x.order[0] === 'flash-coached'), 'reply order varies');
+  // A rater who always agrees with the judge, except on one turn they skip and one they flip.
+  const byKey = new Map(items.map((it) => [it.key, it]));
+  const picks = s.map((x, i) => ({ key: x.key, pick: i === 0 ? 'skip' : i === 1 ? (byKey.get(x.key).judge.winner === 'flash-plain' ? 'flash-coached' : 'flash-plain') : byKey.get(x.key).judge.winner }));
+  const a = agreement(results, { items: picks });
+  assert.equal(a.n, 41, 'skips are left out');
+  assert.equal(a.overall.k, 40);
+  assert.equal(a.disagreements.length, 1);
+  assert.ok(a.overall.ci[0] < a.overall.rate && a.overall.rate < a.overall.ci[1]);
+  assert.equal(a.byCase.reduce((t, c) => t + c.n, 0), 41);
+  assert.ok(Math.abs(a.human.a + a.human.tie + a.human.b - 1) < 1e-9);
+});
+
+test('a report with blind ratings shows the judge-vs-human section', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { ratingItems } = await import('../src/ratings.js');
+  const results = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  assert.doesNotMatch(renderReport(results), /Judge vs\. human/);
+  const items = ratingItems(results).slice(0, 10).map((it) => ({ key: it.key, pick: it.judge.winner }));
+  results.meta.humanRatings = { rater: 'Test', items };
+  const html = renderReport(results);
+  assert.match(html, /Judge vs\. human/);
+  assert.match(html, /Test rated 10 turns blind/);
+  assert.match(html, /100%/);
+});

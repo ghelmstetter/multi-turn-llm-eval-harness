@@ -158,6 +158,18 @@ export const GLOSSARY = {
     means: 'A case where the overall loser wins is a regression, or a strength of the loser, that the overall numbers hide.',
     why: 'Prompt changes rarely help everywhere. Seeing where a change hurts is how you decide whether to ship it, and what to fix first.',
   },
+  humanRating: {
+    term: 'Blind human rating',
+    what: 'A person compares the same two replies the judge compared, without knowing which model or prompt wrote which, and picks the better one (or a tie). The order of the two replies is shuffled for every turn.',
+    means: 'It measures the judge, not the targets: the question is how often the LLM judge picks what a careful human would.',
+    why: 'An LLM judge is only useful if its verdicts match human judgment. Checking a sample by hand is how you find out how far to trust the rest of the run, and where not to.',
+  },
+  agreement: {
+    term: 'Judge-human agreement',
+    what: 'The share of rated turns where the judge and the human made the same pick: the same reply, or both called it a tie. Turns the human skipped are left out.',
+    means: 'Higher is better, but don\'t expect 100%: people disagree too. In the MT-Bench study (Zheng et al., 2023), expert raters agreed with each other 63–67% of the time counting ties, and 81–82% when both picked a winner; GPT-4 as a judge agreed with them about as often (66% and 85%). A judge near those numbers is about as good as a second person.',
+    why: 'This is the number that says whether the head-to-head verdict can be trusted. Agreement by case shows where the judge is weakest, and the split by position consistency shows whether swapping the reply order is worth its cost.',
+  },
   analysis: {
     term: 'Analysis and recommendations',
     what: 'Notes written about this run by a person (or an assistant) after reading the results: what the numbers mean, likely causes, and what to try next.',

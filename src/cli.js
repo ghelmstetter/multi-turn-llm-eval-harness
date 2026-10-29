@@ -3,10 +3,11 @@
 //   mtle estimate --suite <dir> --targets <file> [options]   show the cost estimate only
 //   mtle run      --suite <dir> --targets <file> [options]   run, save results.json and report.html
 //   mtle validate --suite <dir> --targets <file>               check a suite and targets file, explaining any problems
-//   mtle report   <results.json> [--suite <dir>] [--notes <file.md>] [--publish <index.json>]
+//   mtle report   <results.json> [--suite <dir>] [--notes <file.md>] [--ratings <ratings.json>] [--publish <index.json>]
 //                 re-render a report; with --suite, re-score the saved transcripts with the suite's
 //                 current metrics and checks (free: no model calls); with --notes, add an
-//                 analysis section written by you (or an assistant); with --publish, list the run
+//                 analysis section written by you (or an assistant); with --ratings, add blind
+//                 human ratings from the web app (optional --rater name); with --publish, list the run
 //                 in the web app's gallery index (optional --id, --title, and --home for the
 //                 report's link back to the gallery)
 // Options:
@@ -93,7 +94,7 @@ export async function execute(plan, { budget, log = () => {} } = {}) {
   return {
     meta: {
       harnessVersion: VERSION, startedAt, finishedAt: new Date().toISOString(), mode: plan.mode, mock: plan.mock,
-      suite: { id: plan.suite.id, title: plan.suite.title, description: plan.suite.description, metrics: plan.suite.metrics }, roleNames: plan.suite.roleNames, rubric: plan.suite.rubric,
+      suite: { id: plan.suite.id, title: plan.suite.title, description: plan.suite.description, metrics: plan.suite.metrics, pairwiseQuestion: plan.suite.pairwiseQuestion }, roleNames: plan.suite.roleNames, rubric: plan.suite.rubric,
       promptNotes: plan.suite.promptNotes ?? {},
       prompts: Object.fromEntries([...new Set(plan.targets.map((t) => t.prompt ?? plan.suite.defaultPrompt))].map((v) => [v, plan.suite.prompts[v]])),
       caseInfo: plan.cases.map((c) => ({ id: c.id, title: c.title, goal: c.goal })),
@@ -128,6 +129,15 @@ async function main(argv) {
       results = rescore(results, loadSuite(args.suite));
       writeFileSync(file, JSON.stringify(results, null, 2));
       console.log('Re-scored the saved transcripts with the suite\'s current metrics and checks.');
+    }
+    if (args.ratings) {
+      // Blind human ratings exported from the web app's Rate tab, kept with the run.
+      const ratings = JSON.parse(readFileSync(resolve(args.ratings), 'utf8'));
+      if (ratings.run?.startedAt && ratings.run.startedAt !== results.meta.startedAt) throw new Error(`${args.ratings} was rated on a different run (started ${ratings.run.startedAt})`);
+      if (args.rater) ratings.rater = args.rater;
+      results.meta.humanRatings = ratings;
+      writeFileSync(file, JSON.stringify(results, null, 2));
+      console.log(`Added ${ratings.items?.length ?? 0} blind ratings.`);
     }
     if (args.notes) {
       results.meta.notes = readFileSync(resolve(args.notes), 'utf8');

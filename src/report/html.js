@@ -7,6 +7,7 @@ import { METRIC_BETTER, metricScore, meanInterval } from '../run.js';
 import { GLOSSARY, info, popovers, glossarySection } from './glossary.js';
 import { winShareChart, pairBars, lengthStrip, splitBar, legend, TOOLTIP_SCRIPT } from './charts.js';
 import { byCase, findings, markdownToHtml } from '../analysis.js';
+import { agreementSection } from './agreement.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
@@ -311,6 +312,7 @@ ${meta.suite.description ? `<p class="lead">${esc(meta.suite.description)}</p>` 
 <div class="tcards">${targetCards}</div>
 ${caseList ? `<details class="cases-d"><summary><b>Cases (${(meta.caseInfo ?? []).length})</b> <span class="muted small">what each one tests</span></summary><ul class="cases">${caseList}</ul></details>` : ''}
 ${h2h}
+${meta.humanRatings ? agreementSection(results, meta.humanRatings, { rater: meta.humanRatings.rater ?? null }) : ''}
 ${caseHtml}
 ${lengths}
 ${metrics}

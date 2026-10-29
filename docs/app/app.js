@@ -1,6 +1,8 @@
 // The web app: one page, three tabs. It uses the same engine code as the command line
 // (served from ../src), so the numbers here always match the CLI's.
 import { REPORT_CSS } from '../src/report/styles.js';
+import { popovers } from '../src/report/glossary.js';
+import { mountRate } from './rate.js';
 
 // Shared styles first, so app.css can build on them.
 const style = document.createElement('style');
@@ -48,15 +50,33 @@ function runCard(r) {
   </article>`;
 }
 
+// Full results for a run, fetched once and kept for the session.
+const cache = new Map();
+async function loadResults(run) {
+  if (!cache.has(run.id)) cache.set(run.id, fetch(new URL(run.results, INDEX)).then((r) => { if (!r.ok) throw new Error(`results returned ${r.status}`); return r.json(); }));
+  return cache.get(run.id);
+}
+
 async function loadRuns() {
   const box = document.getElementById('runs');
+  const rate = document.getElementById('rate-box');
   try {
     const res = await fetch(INDEX);
     if (!res.ok) throw new Error(`the run list returned ${res.status}`);
     const { runs = [] } = await res.json();
     box.innerHTML = runs.length ? runs.map(runCard).join('') : '<p class="muted">No runs published yet. Publish one with <code>node src/cli.js report &lt;results.json&gt; --publish docs/runs/index.json</code>.</p>';
+    mountRate(rate, runs, loadResults);
   } catch (e) {
-    box.innerHTML = `<p class="err">Couldn't load the runs: ${esc(e.message)}. If you opened this file directly, start the local server with <code>npm run app</code> instead.</p>`;
+    const msg = `<p class="err">Couldn't load the runs: ${esc(e.message)}. If you opened this file directly, start the local server with <code>npm run app</code> instead.</p>`;
+    box.innerHTML = msg;
+    rate.innerHTML = msg;
   }
 }
 loadRuns();
+
+// The glossary pop-ups (ⓘ buttons) and hover tooltips, as in the report.
+document.body.insertAdjacentHTML('beforeend', popovers());
+const tip = document.getElementById('tip');
+document.addEventListener('pointerover', (e) => { const t = e.target.closest('[data-tip]'); if (!t) return; tip.textContent = t.dataset.tip; tip.hidden = false; });
+document.addEventListener('pointermove', (e) => { if (tip.hidden) return; tip.style.left = `${Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8)}px`; tip.style.top = `${e.clientY + 16}px`; });
+document.addEventListener('pointerout', (e) => { if (e.target.closest('[data-tip]')) tip.hidden = true; });
