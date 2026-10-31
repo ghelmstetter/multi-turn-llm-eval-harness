@@ -31,7 +31,7 @@ const INDEX = new URL('../runs/index.json', import.meta.url);
 
 function verdictText(v) {
   if (!v) return 'No head-to-head verdict';
-  const rate = v.winRate != null ? `${pct(v.winRate)} of ${v.n} ${v.unit ?? ''}`.trim() : '';
+  const rate = v.winRate != null ? (v.balanced ? `${pct(v.winRate)} with cases weighted equally` : `${pct(v.winRate)} of ${v.n} ${v.unit ?? ''}`.trim()) : '';
   const ci = v.ci ? `, 95% interval ${pct(v.ci[0])}–${pct(v.ci[1])}` : '';
   if (v.strength === 'clear') return `<b>Winner:</b> ${esc(v.leaderLabel)} (${rate}${ci})`;
   if (v.strength === 'leaning') return `<b>Leaning:</b> ${esc(v.leaderLabel)} (${rate}${ci})`;

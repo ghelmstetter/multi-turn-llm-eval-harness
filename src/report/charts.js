@@ -161,6 +161,8 @@ export const TOOLTIP_SCRIPT = `<div id="tip" role="tooltip" hidden></div><script
   document.addEventListener('pointerover', (e) => { const t = e.target.closest('[data-tip]'); if (!t) return; tip.textContent = t.dataset.tip; tip.hidden = false; });
   document.addEventListener('pointermove', (e) => { if (tip.hidden) return; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px'; });
   document.addEventListener('pointerout', (e) => { if (e.target.closest('[data-tip]')) tip.hidden = true; });
+  // "Copy" buttons copy a command.
+  for (const b of document.querySelectorAll('button.copy[data-copy]')) b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500); } catch { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); } };
   // "More…" buttons expand a clamped block of text.
   for (const b of document.querySelectorAll('button.more[data-clamp]')) {
     const box = document.getElementById(b.dataset.clamp);

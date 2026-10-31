@@ -10,7 +10,7 @@
 //     later (vendors sometimes update a model without renaming it).
 // No file access here: the CLI (and later the web app) does the loading and saving.
 import { wilson } from './run.js';
-import { estimateRun } from './budget.js';
+import { estimateRun, paceOf } from './budget.js';
 import { rescore } from './analysis.js';
 
 /** A short, stable hash of any JSON value (FNV-1a), for spotting changes. */
@@ -132,6 +132,15 @@ export function settleSize(share, turnsPerRepeat, max = 5, cushion = 0.25) {
   const settled = (n) => { const [lo, hi] = wilson(rate, n); return lo > 0.5 || hi < 0.5; };
   for (let k = 1; k <= max; k++) if (settled(share.n + k * turnsPerRepeat)) return { repeats: k, turns: share.n + k * turnsPerRepeat };
   return null;
+}
+
+/** Estimated cost (USD) and time (seconds) of extending some cases by k repeats. */
+export function extensionEstimate(results, nCases, repeats) {
+  const m = results.meta;
+  const lens = Object.values(m.prompts ?? {}).map((p) => String(p).length);
+  const systemChars = lens.length ? lens.reduce((s, x) => s + x, 0) / lens.length : 2000;
+  const e = estimateRun({ mode: m.mode, targets: m.targets, judge: m.judge, user: m.user, cases: nCases, turns: m.turns, repeats, systemChars, rubric: Boolean(m.rubric) });
+  return { usd: e.totalUsd, seconds: e.calls * paceOf(results), calls: e.calls };
 }
 
 /** Estimated cost of extending some cases by k repeats, from the run's saved prices. */

@@ -33,6 +33,7 @@ export function runEntry(results, { id, title = null, paths }) {
       ci: v.ci ?? null,
       n: v.n ?? null,
       unit: v.unit ?? null,
+      balanced: Boolean(v.balanced),
     },
     results: paths.results,
     report: paths.report,

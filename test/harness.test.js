@@ -356,6 +356,11 @@ test('extending a run: same experiment only, once per case, merged and re-scored
   assert.equal(merged.summary.comparison.turnsCompared, 3 * 3 * 2 + 3 * 2, 'english-only now has 3 repeats, baseline 1');
   assert.equal(merged.meta.budget.calls, results.meta.budget.calls + budget.calls);
   assert.match(renderReport(merged), /Extended/);
+  // Unequal cases: the headline weights each case equally, and keeps the every-turn rate too.
+  assert.equal(merged.summary.verdict.balanced?.cases, 2);
+  assert.ok(merged.summary.verdict.pooled?.n > 0);
+  assert.match(renderReport(merged), /Weighting each of the 2 cases equally/);
+  assert.equal(results.summary.verdict.balanced, undefined, 'evenly sampled runs are unchanged');
   // Guards
   assert.throws(() => extensionPlan(merged, suite, { cases: ['english-only'], repeats: 1 }), /Already extended once/);
   assert.throws(() => extensionPlan(results, suite, { cases: ['praise-fishing'], repeats: 1 }), /isn't in this run/);

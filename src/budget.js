@@ -76,6 +76,7 @@ export function estimateRun({ mode, targets, judge, user, cases, turns, repeats,
   let assistantUsd = 0;
   let userUsd = 0;
   let judgeUsd = 0;
+  let calls = 0;
   const per = (price, inTok, outTok) => (inTok * (price?.input ?? 0) + outTok * (price?.output ?? 0)) / 1e6;
   const convs = cases * repeats;
   const tracks = mode === 'mirrored' ? 2 : targets.length; // mirrored: one track per main model
@@ -83,14 +84,35 @@ export function estimateRun({ mode, targets, judge, user, cases, turns, repeats,
     const answering = mode === 'mirrored' ? targets.slice(0, 2) : null;
     for (let k = 0; k < tracks; k++) {
       const who = answering ?? [targets[k]];
-      for (const tg of who) assistantUsd += convs * per(tg.price, tutorIn(t), T.tutorOut + think(tg));
-      if (t < turns - 1) userUsd += convs * per(user.price, tutorIn(t) / 2 + 200, T.userOut + think(user));
-      if (mode === 'mirrored') judgeUsd += convs * 2 * per(judge.price, tutorIn(t) + 2 * T.tutorOut + 300, T.pairOut + think(judge)); // both orders
+      for (const tg of who) { assistantUsd += convs * per(tg.price, tutorIn(t), T.tutorOut + think(tg)); calls += convs; }
+      if (t < turns - 1) { userUsd += convs * per(user.price, tutorIn(t) / 2 + 200, T.userOut + think(user)); calls += convs; }
+      if (mode === 'mirrored') { judgeUsd += convs * 2 * per(judge.price, tutorIn(t) + 2 * T.tutorOut + 300, T.pairOut + think(judge)); calls += convs * 2; } // both orders
     }
   }
   const transcriptIn = turns * T.turnTokens * 2 + 600;
-  if (rubric) judgeUsd += convs * tracks * per(judge.price, transcriptIn, T.judgeOut + think(judge));
-  if (mode === 'independent' && targets.length >= 2) judgeUsd += convs * 2 * per(judge.price, transcriptIn * 2, T.pairOut + think(judge));
+  if (rubric) { judgeUsd += convs * tracks * per(judge.price, transcriptIn, T.judgeOut + think(judge)); calls += convs * tracks; }
+  if (mode === 'independent' && targets.length >= 2) { judgeUsd += convs * 2 * per(judge.price, transcriptIn * 2, T.pairOut + think(judge)); calls += convs * 2; }
   const m = 1.15;
-  return { assistantUsd: assistantUsd * m, userUsd: userUsd * m, judgeUsd: judgeUsd * m, totalUsd: (assistantUsd + userUsd + judgeUsd) * m };
+  return { assistantUsd: assistantUsd * m, userUsd: userUsd * m, judgeUsd: judgeUsd * m, totalUsd: (assistantUsd + userUsd + judgeUsd) * m, calls };
+}
+
+/**
+ * Seconds per model call. Calls run one after another, so a run takes about calls × this.
+ * Default calibrated on the first real Gemini Flash run (404 calls in 28 minutes); a saved
+ * run's own pace is used when there is one (for extending it).
+ */
+export const SECONDS_PER_CALL = 4.2;
+export function paceOf(results) {
+  const m = results?.meta;
+  const ms = Date.parse(m?.finishedAt) - Date.parse(m?.startedAt);
+  const calls = m?.budget?.calls;
+  return !m?.mock && ms > 0 && calls ? ms / 1000 / calls : SECONDS_PER_CALL;
+}
+
+/** "about 25 minutes", "about 2 minutes", "under a minute" */
+export function durationText(seconds) {
+  if (seconds < 60) return 'under a minute';
+  const min = Math.round(seconds / 60);
+  if (min < 90) return `about ${min} minute${min === 1 ? '' : 's'}`;
+  return `about ${(seconds / 3600).toFixed(1)} hours`;
 }

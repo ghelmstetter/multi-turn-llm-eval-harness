@@ -20,6 +20,7 @@ export function rescore(results, suite) {
   summary.cost = costPerTarget(targets, results.meta.budget?.byTarget);
   if (summary.verdict) summary.verdict.value = valueOf(summary.verdict, summary.cost);
   results.summary = summary;
+  balanceVerdict(results);
   results.meta.suite = { ...results.meta.suite, title: suite.title, description: suite.description, metrics: suite.metrics, pairwiseQuestion: suite.pairwiseQuestion };
   results.meta.rubric = suite.rubric;
   results.meta.promptNotes = suite.promptNotes ?? results.meta.promptNotes;
@@ -141,4 +142,48 @@ export function markdownToHtml(md) {
   }
   flush();
   return out.join('\n');
+}
+
+/**
+ * A target's head-to-head win rate with each case weighted equally (ties as half), and its 95%
+ * interval (a stratified estimate: the mean of the per-case rates, with their variances
+ * combined). unequal = the cases have different numbers of turns, as after an extension.
+ */
+export function caseBalanced(results, id) {
+  const ids = results.meta.targets.map((t) => t.id);
+  const rows = byCase(results).filter((c) => c.share?.n);
+  if (!rows.length) return null;
+  const rates = rows.map((c) => ({ p: ids[0] === id ? c.share.a + c.share.tie / 2 : c.share.b + c.share.tie / 2, n: c.share.n }));
+  const k = rates.length;
+  const rate = rates.reduce((s, r) => s + r.p, 0) / k;
+  // Variance per case, with a small adjustment so a 0% or 100% case doesn't count as certain.
+  const se = Math.sqrt(rates.reduce((s, r) => { const q = (r.p * r.n + 1) / (r.n + 2); return s + (q * (1 - q)) / r.n; }, 0) / (k * k));
+  return { rate, se, ci: [Math.max(0, rate - 1.96 * se), Math.min(1, rate + 1.96 * se)], cases: k, turns: rates.reduce((s, r) => s + r.n, 0), unequal: new Set(rates.map((r) => r.n)).size > 1 };
+}
+
+/**
+ * When cases have different numbers of turns (some were extended), counting every turn would
+ * let the extended cases dominate the headline. Then the verdict weights each case equally,
+ * and keeps the every-turn numbers alongside for reference.
+ */
+export function balanceVerdict(results) {
+  const v = results.summary?.verdict;
+  const ids = results.meta.targets.map((t) => t.id).slice(0, 2);
+  if (!v || ids.length < 2) return results;
+  const bx = caseBalanced(results, ids[0]);
+  if (!bx?.unequal) { delete v.balanced; delete v.pooled; return results; }
+  const pooledX = v.leader === ids[0] ? (v.pooled?.rates?.[ids[0]] ?? v.winRate) : (v.pooled?.rates?.[ids[0]] ?? 1 - v.winRate);
+  const lead = bx.rate >= 0.5 ? ids[0] : ids[1];
+  const p = lead === ids[0] ? bx.rate : 1 - bx.rate;
+  const ci = lead === ids[0] ? bx.ci : [1 - bx.ci[1], 1 - bx.ci[0]];
+  v.pooled = { rates: { [ids[0]]: pooledX, [ids[1]]: 1 - pooledX }, n: v.pooled?.n ?? v.n };
+  v.balanced = { cases: bx.cases, turns: bx.turns };
+  v.leader = lead;
+  v.other = lead === ids[0] ? ids[1] : ids[0];
+  v.winRate = p;
+  v.ci = ci;
+  v.strength = ci[0] > 0.5 ? 'clear' : p > 0.5 ? 'leaning' : 'tie';
+  v.winner = v.strength === 'tie' ? null : lead;
+  if (results.summary.cost) v.value = valueOf(v, results.summary.cost);
+  return results;
 }

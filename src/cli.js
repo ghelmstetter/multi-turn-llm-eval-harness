@@ -32,14 +32,14 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve, relative, dirname, basename, sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { makeTarget } from './targets/index.js';
-import { Budget, estimateRun } from './budget.js';
+import { Budget, estimateRun, SECONDS_PER_CALL, durationText } from './budget.js';
 import { runMirrored, runIndependent, summarize, costPerTarget, valueOf } from './run.js';
 import { renderReport } from './report/html.js';
 import { loadSuite, validateLoaded, fileSpendStore } from './load-node.js';
 import { rescore } from './analysis.js';
 import { runEntry, upsertIndex } from './run-index.js';
-import { fingerprint, extensionPlan, mergeExtension, extensionCost } from './extend.js';
-import { byCase } from './analysis.js';
+import { fingerprint, extensionPlan, mergeExtension, extensionEstimate } from './extend.js';
+import { byCase, balanceVerdict } from './analysis.js';
 import { renderComparison } from './report/compare-html.js';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
@@ -100,7 +100,7 @@ export async function execute(plan, { budget, log = () => {} } = {}) {
   summary.cost = costPerTarget(plan.targets, budget.byTarget);
   if (summary.verdict) summary.verdict.value = valueOf(summary.verdict, summary.cost);
   const pick = (t) => ({ id: t.id, label: t.label, description: t.description, vendor: t.vendor, model: t.model, prompt: t.prompt, temperature: t.temperature, maxTokens: t.maxTokens, thinkingTokens: t.thinkingTokens, mockBehavior: t.mockBehavior, price: t.listPrice });
-  return {
+  return balanceVerdict({
     meta: {
       harnessVersion: VERSION, startedAt, finishedAt: new Date().toISOString(), mode: plan.mode, mock: plan.mock,
       suite: { id: plan.suite.id, title: plan.suite.title, description: plan.suite.description, metrics: plan.suite.metrics, pairwiseQuestion: plan.suite.pairwiseQuestion }, roleNames: plan.suite.roleNames, rubric: plan.suite.rubric,
@@ -114,6 +114,23 @@ export async function execute(plan, { budget, log = () => {} } = {}) {
     },
     partial: out.partial, stopReason: out.stopReason ?? null,
     summary, conversations: out.conversations, pairs: out.pairs ?? [],
+  });
+}
+
+/** A path as typed from the current folder, with forward slashes (works on Windows too). */
+const relPath = (f) => relative(process.cwd(), resolve(f)).split(sep).join('/');
+
+/**
+ * Progress for a run: the runners log one line per conversation; this adds "conversation k of
+ * N" and, from the pace so far, the time left.
+ */
+function progressLog(total) {
+  const t0 = Date.now();
+  let k = 0;
+  return (msg) => {
+    k++;
+    const left = k > 1 ? ` · ${durationText(((Date.now() - t0) / 1000 / (k - 1)) * (total - k + 1))} left` : '';
+    console.log(`  [${k}/${total}${left}] ${msg}`);
   };
 }
 
@@ -159,7 +176,7 @@ async function main(argv) {
     // A published report links back to the gallery: the web app beside the index's folder
     // (docs/runs → docs/app), or wherever --home says.
     const home = args.publish ? (args.home ?? `${relative(dirname(resolve(outFile)), join(dirname(resolve(args.publish)), '..', 'app')).split(sep).join('/')}/#explore`) : args.home ?? null;
-    writeFileSync(outFile, renderReport(results, { home }));
+    writeFileSync(outFile, renderReport(results, { home, resultsPath: relPath(file) }));
     console.log(`Wrote ${outFile}`);
     if (args.publish) {
       // Add the run to a gallery index (e.g. docs/runs/index.json), with paths relative to it.
@@ -205,6 +222,7 @@ async function main(argv) {
   console.log(`${plan.suite.title}: ${plan.mode} mode, ${plan.cases.length} case(s) × ${plan.repeats} repeat(s) × ${plan.turns} turns`);
   console.log(`Targets: ${plan.targets.map((t) => t.id).join(' vs ')} · judge: ${plan.judge.model ?? plan.judge.vendor}${plan.mock ? ' · MOCK (no cost)' : ''}`);
   console.log(`Estimated cost: ${fmt(est.totalUsd)} (assistants ${fmt(est.assistantUsd)}, simulated user ${fmt(est.userUsd)}, judge ${fmt(est.judgeUsd)}); errs high.`);
+  if (!plan.mock) console.log(`Estimated time: ${durationText(est.calls * SECONDS_PER_CALL)} (${est.calls} model calls, one at a time).`);
   console.log(`Caps: ${fmt(plan.runCapUsd)} per run, ${fmt(plan.dailyCapUsd)} per day (${fmt(budget.spentBefore)} spent today).`);
   if (cmd === 'estimate') return;
   const near = est.totalUsd >= 0.8 * plan.runCapUsd || budget.spentBefore + est.totalUsd >= 0.8 * plan.dailyCapUsd;
@@ -215,12 +233,13 @@ async function main(argv) {
     rl.close();
     if (!ok) return;
   }
-  const results = await execute(plan, { budget, log: (m) => console.log(`  ${m}`) });
+  const conversations = plan.cases.length * plan.repeats * (plan.mode === 'mirrored' ? 2 : plan.targets.length);
+  const results = await execute(plan, { budget, log: progressLog(conversations) });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const dir = resolve(args.out ?? join('results', `${stamp}-${plan.suite.id}-${plan.mode}${plan.mock ? '-mock' : ''}`));
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'results.json'), JSON.stringify(results, null, 2));
-  writeFileSync(join(dir, 'report.html'), renderReport(results));
+  writeFileSync(join(dir, 'report.html'), renderReport(results, { resultsPath: relPath(join(dir, 'results.json')) }));
   const c = results.summary.comparison;
   if (c && plan.mode === 'mirrored') {
     for (const t of plan.targets) console.log(`${t.id}: wins ${(c[t.id].winRate * 100).toFixed(0)}% of turns (home-field ${c[t.id].homeField == null ? '–' : `${(c[t.id].homeField * 100).toFixed(0)} pts`})`);
@@ -253,11 +272,11 @@ async function extendRun(args) {
   const missing = [...new Set([...targets, user, judge].filter((t) => !t.ready).map((t) => t.keyEnv))];
   if (missing.length) throw new Error(`Missing API key: set ${missing.join(' and ')} (in the environment or a .env file)`);
   const plan = { suite, cases: ext.cases.map((id) => suite.cases.find((c) => c.id === id)), targets, mode: m.mode, mock, user, judge, turns: m.turns, repeats: ext.repeats, repeatStart: ext.repeatStart, rubric: Boolean(m.rubric), runCapUsd: Number(args['max-usd'] ?? 1), dailyCapUsd: Number(args['daily-usd'] ?? 5) };
-  const est = extensionCost(results, plan.cases.length, plan.repeats);
+  const est = extensionEstimate(results, plan.cases.length, plan.repeats);
   const budget = new Budget({ runCapUsd: plan.runCapUsd, dailyCapUsd: plan.dailyCapUsd, spendStore: mock ? null : fileSpendStore(resolve('results')) });
   console.log(`Extending ${file}: ${ext.cases.join(', ')} × ${ext.repeats} more repeat(s) (repeats ${ext.repeatStart + 1}–${ext.repeatStart + ext.repeats}), ${m.turns} turns, ${m.mode} mode${mock ? ' · MOCK (no cost)' : ''}`);
   console.log(`Same models and settings as the original run: ${targets.map((t) => `${t.id} (${t.model ?? t.vendor})`).join(' vs ')}; judge ${judge.model ?? judge.vendor}.`);
-  console.log(`Estimated cost: ${fmt(est)}. Caps: ${fmt(plan.runCapUsd)} per run, ${fmt(plan.dailyCapUsd)} per day (${fmt(budget.spentBefore)} spent today).`);
+  console.log(`Estimated cost: ${fmt(est.usd)}${mock ? '' : `; time: ${durationText(est.seconds)} (${est.calls} model calls, at this run's own pace)`}. Caps: ${fmt(plan.runCapUsd)} per run, ${fmt(plan.dailyCapUsd)} per day (${fmt(budget.spentBefore)} spent today).`);
   console.log('Each case can be extended once, so choose the number of repeats now rather than adding a few at a time.');
   if (!args.yes) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -266,11 +285,11 @@ async function extendRun(args) {
     if (!ok) return;
   }
   const runner = plan.mode === 'mirrored' ? runMirrored : runIndependent;
-  const out = await runner({ ...plan, budget, log: (x) => console.log(`  ${x}`) });
+  const out = await runner({ ...plan, budget, log: progressLog(plan.cases.length * plan.repeats * (plan.mode === 'mirrored' ? 2 : plan.targets.length)) });
   const merged = mergeExtension(results, { cases: ext.cases, repeats: ext.repeats, conversations: out.conversations, pairs: out.pairs ?? [], budget: budget.summary(), partial: out.partial, stopReason: out.stopReason }, suite);
   writeFileSync(file, JSON.stringify(merged, null, 2));
   const outFile = /results\.json$/.test(file) ? file.replace(/results\.json$/, 'report.html') : `${file}.html`;
-  writeFileSync(outFile, renderReport(merged));
+  writeFileSync(outFile, renderReport(merged, { resultsPath: relPath(file) }));
   for (const c of byCase(merged).filter((x) => ext.cases.includes(x.case))) {
     const iv = c.share?.interval;
     if (iv) console.log(`${c.case}: ${c.share.n} turns now; ${m.targets[0].id} win rate ${(iv.rate * 100).toFixed(0)}% (95% interval ${(iv.ci[0] * 100).toFixed(0)}-${(iv.ci[1] * 100).toFixed(0)}%), ${iv.settled ? 'settled' : 'not settled'}`);

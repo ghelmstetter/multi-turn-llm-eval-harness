@@ -4,7 +4,7 @@
 // against the baseline can be compared case by case. Pure functions; the web app and the CLI
 // render the result.
 import { wilson, metricScore, METRIC_BETTER, meanInterval } from './run.js';
-import { byCase } from './analysis.js';
+import { byCase, caseBalanced } from './analysis.js';
 
 /**
  * 95% interval for the difference of two proportions (Newcombe's method, from each one's Wilson
@@ -56,7 +56,16 @@ export function compareRuns(a, b) {
   const mu = matchup(a, b);
   if (!mu.ok) return mu;
   const label = (r, id) => r.meta.targets.find((t) => t.id === id)?.label ?? id;
-  const overall = change(winRate(a, mu.challengerA), nOf(a), winRate(b, mu.challengerB), nOf(b));
+  // Overall: if either run has cases with different numbers of turns (extended), weight each
+  // case equally in both runs, so the extended cases don't dominate.
+  const ba = caseBalanced(a, mu.challengerA);
+  const bb = caseBalanced(b, mu.challengerB);
+  let overall;
+  if (ba?.unequal || bb?.unequal) {
+    const d = bb.rate - ba.rate;
+    const h = 1.96 * Math.sqrt(ba.se ** 2 + bb.se ** 2);
+    overall = { before: { rate: ba.rate, n: ba.turns, ci: ba.ci }, after: { rate: bb.rate, n: bb.turns, ci: bb.ci }, diff: d, ci: [d - h, d + h], real: d - h > 0 || d + h < 0, balanced: true };
+  } else overall = change(winRate(a, mu.challengerA), nOf(a), winRate(b, mu.challengerB), nOf(b));
   const caseIds = a.meta.cases.filter((id) => b.meta.cases.includes(id));
   const title = (id) => (b.meta.caseInfo ?? a.meta.caseInfo ?? []).find((c) => c.id === id)?.title ?? id;
   const cases = caseIds.map((id) => {
@@ -74,7 +83,9 @@ export function compareRuns(a, b) {
     const base = b.summary.targets[mu.baseline]?.metrics?.[k] ?? null;
     const sa = metricScore(va, better[k]);
     const sb = metricScore(vb, better[k]);
-    return { id: k, rule: better[k], baseline: base, before: va, after: vb, direction: Math.abs(sb - sa) < 1e-9 ? 'same' : sb > sa ? 'better' : 'worse' };
+    // Differences under 5% (relative) count as the same: too small to matter.
+    const tiny = Math.abs(vb - va) <= 0.05 * Math.max(Math.abs(va), Math.abs(vb), 1e-9);
+    return { id: k, rule: better[k], baseline: base, before: va, after: vb, direction: tiny || Math.abs(sb - sa) < 1e-9 ? 'same' : sb > sa ? 'better' : 'worse' };
   });
   // Rubric: each criterion's mean over the challenger's own conversations, with intervals.
   const scores = (r, id, crit) => r.conversations.filter((c) => c.main === id).map((c) => c.rubric?.scores?.[crit]?.score).filter(Number.isFinite);

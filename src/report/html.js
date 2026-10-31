@@ -8,7 +8,8 @@ import { GLOSSARY, info, popovers, glossarySection } from './glossary.js';
 import { winShareChart, pairBars, lengthStrip, splitBar, legend, TOOLTIP_SCRIPT } from './charts.js';
 import { byCase, findings, markdownToHtml } from '../analysis.js';
 import { agreementSection } from './agreement.js';
-import { settleSize, extensionCost, caseRepeats, extendedCases } from '../extend.js';
+import { settleSize, extensionEstimate, caseRepeats, extendedCases } from '../extend.js';
+import { durationText } from '../budget.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
@@ -80,7 +81,9 @@ function verdictBox(v, L, meta, better, chart = '') {
   const head = v.strength === 'clear' ? `Winner: ${L(v.leader)}`
     : v.strength === 'leaning' ? `Leaning: ${L(v.leader)}, but not conclusive yet`
       : 'Too close to call';
-  const rate = `${L(v.leader)} won ${pct(v.winRate)} of ${v.n} ${v.unit} judged head to head (95% interval ${info('interval')} ${pct(v.ci[0])}–${pct(v.ci[1])})`;
+  const rate = v.balanced
+    ? `Weighting each of the ${v.balanced.cases} cases equally, ${L(v.leader)} won ${pct(v.winRate)} of the ${v.unit} judged head to head (95% interval ${info('interval')} ${pct(v.ci[0])}–${pct(v.ci[1])}). Cases are weighted equally because some have more ${v.unit} than others (they were extended ${info('extended')}); counting every one of the ${v.pooled.n} ${v.unit} instead would let those cases dominate, and gives ${pct(v.pooled.rates[v.leader])}`
+    : `${L(v.leader)} won ${pct(v.winRate)} of ${v.n} ${v.unit} judged head to head (95% interval ${info('interval')} ${pct(v.ci[0])}–${pct(v.ci[1])})`;
   const why = v.strength === 'clear' ? `${rate}.`
     : v.strength === 'leaning' ? `${rate}. The interval includes 50%, so more turns or repeats could change the result.`
       : `${rate}: not distinguishable from a coin flip at this sample size.`;
@@ -117,7 +120,7 @@ function shareRows(meta, conversations, results, label) {
 }
 
 /** opts.home: a link back to the web app's run gallery, for published reports. */
-export function renderReport(results, { home = null } = {}) {
+export function renderReport(results, { home = null, resultsPath = null } = {}) {
   const { meta, summary, conversations } = results;
   const ids = meta.targets.map((t) => t.id);
   const label = Object.fromEntries(meta.targets.map((t) => [t.id, t.label ?? t.id]));
@@ -237,7 +240,8 @@ export function renderReport(results, { home = null } = {}) {
   let verdictChart = '';
   if (cmp && two) {
     const all = shareRows(meta, conversations, results, label)[0];
-    verdictChart = winShareChart([{ ...all, label: meta.mode === 'mirrored' ? 'Head to head, all turns' : 'Head to head, whole conversations' }], names);
+    const allLabel = meta.mode === 'mirrored' ? 'Head to head, all turns' : 'Head to head, whole conversations';
+    verdictChart = winShareChart([{ ...all, label: summary.verdict?.balanced ? `${allLabel}, extended cases counting more` : allLabel }], names);
   }
 
   // ---- findings ----
@@ -259,11 +263,13 @@ export function renderReport(results, { home = null } = {}) {
       if (ext.has(c.case)) return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td colspan="3" class="muted">Already extended once. To settle it, plan a new run with more repeats.</td></tr>`;
       const s = settleSize(c.share, c.share.n / (reps[c.case] || 1));
       if (!s) return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td colspan="3" class="muted">Unlikely to settle with up to 5 more repeats at the current rate: the difference may be too small to matter.</td></tr>`;
-      return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td>+${s.repeats} (${s.turns} turns)</td><td>about ${fmtUsd(extensionCost(results, 1, s.repeats))}</td><td><code>extend results.json --cases ${esc(c.case)} --repeats ${s.repeats}</code></td></tr>`;
+      const est = extensionEstimate(results, 1, s.repeats);
+      const cmd = `node src/cli.js extend ${resultsPath ?? 'results/<run folder>/results.json'} --cases ${c.case} --repeats ${s.repeats}`;
+      return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td>+${s.repeats} (${s.turns} turns)</td><td>${fmtUsd(est.usd)}, ${esc(durationText(est.seconds))}</td><td class="cmd-cell"><code class="cmd">${esc(cmd)}</code><button type="button" class="copy" data-copy="${esc(cmd)}">Copy</button></td></tr>`;
     });
     const settleHtml = settleRows.length ? `<details class="tv"><summary>How to settle the unsettled cases</summary>
       <p class="small">This many more repeats would likely make a case's interval clear 50%, with a cushion: it still would if the case's lead shrank by a quarter. Choose the number once, before running: each case can be extended once, because adding a few at a time until a case happens to settle makes luck look like a result.</p>
-      <table><tr><th>Case</th><th>Turns now</th><th>Suggested</th><th>Estimated cost</th><th>Command (<code>node src/cli.js …</code>)</th></tr>${settleRows.join('')}</table></details>` : '';
+      <table><tr><th>Case</th><th>Turns now</th><th>Suggested</th><th>Estimated cost and time</th><th>Command, to run in the harness folder</th></tr>${settleRows.join('')}</table></details>` : '';
     const ivText = (c) => { const iv = c.share?.interval; if (!iv) return '–'; const lead = iv.rate >= 0.5 ? 0 : 1; const r = lead ? 1 - iv.rate : iv.rate; const ci = lead ? [1 - iv.ci[1], 1 - iv.ci[0]] : iv.ci; return `${esc(label[ids[lead]])} ${pct(r)} <span class="muted small">(${pct(ci[0])}–${pct(ci[1])})</span> ${iv.settled ? '<span class="pass">settled</span>' : '<span class="muted">not settled</span>'}`; };
     const table = `<table><tr><th>Case</th><th>Head to head: leader, win rate (95% interval)</th>${ids.map((id) => `<th>${L(id)}: rubric</th>`).join('')}${ids.map((id) => `<th>${L(id)}: failed checks</th>`).join('')}</tr>
       ${BC.map((c) => `<tr><th>${esc(title(c.case))}</th><td>${ivText(c)}</td>${bestCells(ids.map((id) => c.per[id]?.rubric ?? null), 1, (x) => num(x))}${ids.map((id) => `<td>${c.per[id]?.failed.length ? `<span class="fail">${c.per[id].failed.map((k) => esc(k.id)).join(', ')}</span>` : c.per[id]?.checks ? '<span class="pass">none</span>' : '–'}</td>`).join('')}</tr>`).join('')}</table>`;

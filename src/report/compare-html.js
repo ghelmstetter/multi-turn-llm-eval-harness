@@ -26,7 +26,7 @@ export function comparisonSection(a, b, { titles = ['Run A', 'Run B'] } = {}) {
   const flipped = c.cases.filter((x) => x.flipped);
   const realCases = c.cases.filter((x) => x.real);
   const headline = !o ? 'No head-to-head numbers to compare.'
-    : `Against ${esc(L.baseline)}, ${esc(afterName)} won ${pct(o.after.rate)} of ${o.after.n} turns, versus ${pct(o.before.rate)} of ${o.before.n} for ${esc(beforeName)}: ${pts(o.diff)} (95% interval ${pts(o.ci[0])} to ${pts(o.ci[1])}). ${o.real ? 'That change is more than noise.' : 'That change is within noise: the interval includes zero.'}`;
+    : `Against ${esc(L.baseline)}, ${esc(afterName)} won ${pct(o.after.rate)} of the turns, versus ${pct(o.before.rate)} for ${esc(beforeName)}${o.balanced ? ', weighting each case equally (some cases were extended, so counting every turn would let them dominate)' : ` (${o.after.n} and ${o.before.n} turns)`}: ${pts(o.diff)} (95% interval ${pts(o.ci[0])} to ${pts(o.ci[1])}). ${o.real ? 'That change is more than noise.' : 'That change is within noise: the interval includes zero.'}`;
   const caseLine = flipped.length
     ? ` <b>${flipped.length === 1 ? 'One case' : `${flipped.length} cases`} changed sides:</b> ${flipped.map((x) => `${esc(x.title)} (${pct(x.before.rate)} → ${pct(x.after.rate)})`).join(', ')}.`
     : ' No case changed sides.';
