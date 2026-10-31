@@ -1,0 +1,9 @@
+{
+  "_note": "The follow-up run for the tutor suite: the plain prompt against the coached prompt with the first run's three fixes (prompt variant \"coached-v2\" in suites/tutor-es). Same model, simulated user and judge as examples/targets.json, so its results compare directly with the first run.",
+  "targets": [
+    { "id": "flash-plain", "label": "Gemini Flash, plain prompt", "vendor": "gemini", "model": "gemini-3.8-flash", "prompt": "plain", "temperature": 0.7, "price": { "input": 0.75, "output": 3.75 }, "mockBehavior": "verbose" },
+    { "id": "flash-coached-v2", "label": "Gemini Flash, coached prompt v2", "vendor": "gemini", "model": "gemini-3.8-flash", "prompt": "coached-v2", "temperature": 0.7, "price": { "input": 0.75, "output": 3.75 }, "mockBehavior": "concise" }
+  ],
+  "user": { "id": "sim-learner", "vendor": "gemini", "model": "gemini-3.8-flash", "temperature": 0.9, "price": { "input": 0.75, "output": 3.75 } },
+  "judge": { "id": "judge", "vendor": "gemini", "model": "gemini-3.8-flash", "temperature": 0, "price": { "input": 0.75, "output": 3.75 } }
+}

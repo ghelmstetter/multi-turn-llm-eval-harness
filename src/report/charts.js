@@ -126,6 +126,34 @@ export function splitBar(parts, fmt) {
   return `${legend(live.map((p) => ({ label: `${p.label}: ${fmt(p.value)} (${pct(p.value / total)})`, color: p.color })))}<svg viewBox="0 0 ${W} ${bh}" class="chart" role="img" aria-label="Spending by role">${segs}</svg>`;
 }
 
+/**
+ * Before → after: one row per item, a win rate (0–100%) in two runs, each with its 95% interval,
+ * and an arrow between them. The 50% line marks "no difference from the baseline".
+ * rows: [{ label, before: { rate, ci, n }, after: { rate, ci, n }, real, note }]
+ */
+export function changeChart(rows, { beforeName, afterName, baselineName }) {
+  const W = 720; const lw = 0; const bw = W - 20; const rowH = 58;
+  const sx = (v) => lw + 10 + v * (bw - 10);
+  const H = rows.length * rowH + 8;
+  const ci = (c, y, cls) => `<line x1="${sx(c[0])}" x2="${sx(c[1])}" y1="${y}" y2="${y}" class="${cls}"/><line x1="${sx(c[0])}" x2="${sx(c[0])}" y1="${y - 3}" y2="${y + 3}" class="${cls}"/><line x1="${sx(c[1])}" x2="${sx(c[1])}" y1="${y - 3}" y2="${y + 3}" class="${cls}"/>`;
+  const body = rows.map((r, i) => {
+    const y = 14 + i * rowH;
+    const lab = `<text x="0" y="${y}" class="lab">${esc(r.label)}${r.note ? ` <tspan class="tick">${esc(r.note)}</tspan>` : ''}</text>`;
+    if (!r.before || !r.after) return `${lab}<text x="0" y="${y + 22}" class="tick">not in both runs</text>`;
+    const [yb, ya] = [y + 16, y + 30];
+    const tipB = `${beforeName}: ${pct(r.before.rate)} vs ${baselineName} (95% interval ${pct(r.before.ci[0])}–${pct(r.before.ci[1])}, ${r.before.n} turns)`;
+    const tipA = `${afterName}: ${pct(r.after.rate)} vs ${baselineName} (95% interval ${pct(r.after.ci[0])}–${pct(r.after.ci[1])}, ${r.after.n} turns)`;
+    const d = Math.round((r.after.rate - r.before.rate) * 100);
+    return `${lab}<text x="${W}" y="${y}" text-anchor="end" class="tick">${d > 0 ? '+' : ''}${d} pts · ${r.real ? 'more than noise' : 'within noise'}</text>
+      <g data-tip="${esc(tipB)}">${ci(r.before.ci, yb, 'ci-before')}<circle cx="${sx(r.before.rate)}" cy="${yb}" r="5" class="dot-before"/></g>
+      <g data-tip="${esc(tipA)}">${ci(r.after.ci, ya, 'ci-after')}<circle cx="${sx(r.after.rate)}" cy="${ya}" r="5" class="dot-after"/></g>`;
+  }).join('');
+  const mid = sx(0.5);
+  return `<div class="legend"><span><i class="ring"></i>${esc(beforeName)}</span><span><i style="background:var(--s2)"></i>${esc(afterName)}</span><span class="muted">each against ${esc(baselineName)}; lines are 95% intervals</span></div>
+  <svg viewBox="0 0 ${W} ${H + 18}" class="chart" role="img" aria-label="Win rate before and after, by case"><line x1="${mid}" x2="${mid}" y1="0" y2="${H}" class="ref"/>${body}
+  <text x="${sx(0)}" y="${H + 14}" class="tick" text-anchor="middle">0%</text><text x="${mid}" y="${H + 14}" class="tick" text-anchor="middle">50%: even with ${esc(baselineName)}</text><text x="${sx(1)}" y="${H + 14}" class="tick" text-anchor="end">100%</text></svg>`;
+}
+
 /** Hover tooltips for every [data-tip] mark; one small script for the whole report. */
 export const TOOLTIP_SCRIPT = `<div id="tip" role="tooltip" hidden></div><script>
 (() => {

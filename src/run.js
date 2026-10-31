@@ -35,12 +35,12 @@ async function finishConversation({ conv, suite, kase, judge, budget, rubric }) 
   return conv;
 }
 
-export async function runMirrored({ suite, cases, targets, judge, user, turns, repeats, budget, rubric = true, log = () => {} }) {
+export async function runMirrored({ suite, cases, targets, judge, user, turns, repeats, repeatStart = 0, budget, rubric = true, log = () => {} }) {
   if (targets.length !== 2) throw new Error('Mirrored mode compares exactly two targets');
   const [X, Y] = targets;
   const conversations = [];
   for (const kase of cases) {
-    for (let r = 0; r < repeats; r++) {
+    for (let r = repeatStart; r < repeatStart + repeats; r++) {
       for (const main of [X, Y]) {
         const rival = main === X ? Y : X;
         log(`${kase.id} #${r + 1}: conversation continues with ${main.id}, ${rival.id} answers in the shadow`);
@@ -66,11 +66,11 @@ export async function runMirrored({ suite, cases, targets, judge, user, turns, r
   return { conversations, partial: false };
 }
 
-export async function runIndependent({ suite, cases, targets, judge, user, turns, repeats, budget, rubric = true, log = () => {} }) {
+export async function runIndependent({ suite, cases, targets, judge, user, turns, repeats, repeatStart = 0, budget, rubric = true, log = () => {} }) {
   const conversations = [];
   const pairs = [];
   for (const kase of cases) {
-    for (let r = 0; r < repeats; r++) {
+    for (let r = repeatStart; r < repeatStart + repeats; r++) {
       const byTarget = {};
       for (const tg of targets) {
         log(`${kase.id} #${r + 1}: ${tg.id}`);

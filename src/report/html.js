@@ -8,6 +8,7 @@ import { GLOSSARY, info, popovers, glossarySection } from './glossary.js';
 import { winShareChart, pairBars, lengthStrip, splitBar, legend, TOOLTIP_SCRIPT } from './charts.js';
 import { byCase, findings, markdownToHtml } from '../analysis.js';
 import { agreementSection } from './agreement.js';
+import { settleSize, extensionCost, caseRepeats, extendedCases } from '../extend.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
@@ -249,7 +250,20 @@ export function renderReport(results, { home = null } = {}) {
   if (BC.some((c) => c.share)) {
     const title = (id) => (meta.caseInfo ?? []).find((x) => x.id === id)?.title ?? id;
     const lead = summary.verdict?.leader;
-    const rows = BC.filter((c) => c.share).map((c) => ({ label: title(c.case), ...c.share }));
+    const ext = extendedCases(results);
+    const reps = caseRepeats(results);
+    const rows = BC.filter((c) => c.share).map((c) => ({ label: `${title(c.case)}${ext.has(c.case) ? ' · extended' : ''}`, ...c.share }));
+    // For each unsettled case: how many more repeats would likely settle it, at what cost.
+    const fmtUsd = (x) => `$${x < 0.1 ? x.toFixed(3) : x.toFixed(2)}`;
+    const settleRows = meta.mock ? [] : BC.filter((c) => c.share?.interval && !c.share.interval.settled).map((c) => {
+      if (ext.has(c.case)) return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td colspan="3" class="muted">Already extended once. To settle it, plan a new run with more repeats.</td></tr>`;
+      const s = settleSize(c.share, c.share.n / (reps[c.case] || 1));
+      if (!s) return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td colspan="3" class="muted">Unlikely to settle with up to 5 more repeats at the current rate: the difference may be too small to matter.</td></tr>`;
+      return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td>+${s.repeats} (${s.turns} turns)</td><td>about ${fmtUsd(extensionCost(results, 1, s.repeats))}</td><td><code>extend results.json --cases ${esc(c.case)} --repeats ${s.repeats}</code></td></tr>`;
+    });
+    const settleHtml = settleRows.length ? `<details class="tv"><summary>How to settle the unsettled cases</summary>
+      <p class="small">This many more repeats would likely make a case's interval clear 50%, with a cushion: it still would if the case's lead shrank by a quarter. Choose the number once, before running: each case can be extended once, because adding a few at a time until a case happens to settle makes luck look like a result.</p>
+      <table><tr><th>Case</th><th>Turns now</th><th>Suggested</th><th>Estimated cost</th><th>Command (<code>node src/cli.js …</code>)</th></tr>${settleRows.join('')}</table></details>` : '';
     const ivText = (c) => { const iv = c.share?.interval; if (!iv) return '–'; const lead = iv.rate >= 0.5 ? 0 : 1; const r = lead ? 1 - iv.rate : iv.rate; const ci = lead ? [1 - iv.ci[1], 1 - iv.ci[0]] : iv.ci; return `${esc(label[ids[lead]])} ${pct(r)} <span class="muted small">(${pct(ci[0])}–${pct(ci[1])})</span> ${iv.settled ? '<span class="pass">settled</span>' : '<span class="muted">not settled</span>'}`; };
     const table = `<table><tr><th>Case</th><th>Head to head: leader, win rate (95% interval)</th>${ids.map((id) => `<th>${L(id)}: rubric</th>`).join('')}${ids.map((id) => `<th>${L(id)}: failed checks</th>`).join('')}</tr>
       ${BC.map((c) => `<tr><th>${esc(title(c.case))}</th><td>${ivText(c)}</td>${bestCells(ids.map((id) => c.per[id]?.rubric ?? null), 1, (x) => num(x))}${ids.map((id) => `<td>${c.per[id]?.failed.length ? `<span class="fail">${c.per[id].failed.map((k) => esc(k.id)).join(', ')}</span>` : c.per[id]?.checks ? '<span class="pass">none</span>' : '–'}</td>`).join('')}</tr>`).join('')}</table>`;
@@ -268,7 +282,7 @@ export function renderReport(results, { home = null } = {}) {
     caseHtml = `<h2>By case ${info('byCase')}</h2>
     <p class="lead">Who won each case, turn by turn.${flagged.length ? ` <b>${L(summary.verdict.other)} won ${flagged.length === 1 ? 'one case' : `${flagged.length} cases`}</b> despite the overall result: ${flagged.map((t) => esc(t)).join(', ')}.${caution}` : ''}${!anySettled ? ` With this few turns per case, no single case is settled; the overall result above pools them all.` : ''}</p>
     ${winShareChart(rows, names)}
-    <details class="tv"><summary>Intervals, rubric and checks by case</summary>${table}</details>`;
+    <details class="tv"><summary>Intervals, rubric and checks by case</summary>${table}</details>${settleHtml}`;
   }
 
   // ---- conversations ----
@@ -302,6 +316,7 @@ ${REPORT_CSS}</style></head><body><main>
 ${home ? `<p class="back"><a href="${esc(home)}">← All runs</a></p>` : ''}<h1>Multi-Turn LLM Eval Harness</h1>
 <p class="subhead">Report: ${esc(meta.suite.title)}</p>
 <p class="muted small">${esc(meta.mode)} mode ${meta.mode === 'mirrored' ? info('mirrored') : ''} · ${meta.cases.length} case(s) × ${meta.repeats} repeat(s) × ${meta.turns} turns · judge: ${esc(meta.judge.vendor)} ${esc(meta.judge.model ?? '')} · simulated user ${info('simulatedUser')}: ${esc(meta.user.vendor)} ${esc(meta.user.model ?? '')} · ${esc(meta.startedAt)} · <a href="#glossary">Glossary</a></p>
+${(meta.extensions ?? []).length ? `<p class="muted small">Extended ${info('extended')}: ${meta.extensions.map((e) => `${e.cases.map((c) => esc((meta.caseInfo ?? []).find((x) => x.id === c)?.title ?? c)).join(', ')} +${e.repeats} repeat${e.repeats > 1 ? 's' : ''} on ${esc(String(e.at).slice(0, 10))}${e.partial ? ' (stopped early)' : ''}`).join('; ')}.</p>` : ''}
 ${meta.mock ? '<div class="banner"><b>Mock run.</b> No model was called: these numbers only demonstrate the report format.</div>' : ''}
 ${results.partial ? `<div class="banner"><b>Partial run:</b> ${esc(results.stopReason)}. Results so far are kept.</div>` : ''}
 ${verdictBox(summary.verdict, L, meta, better, verdictChart)}

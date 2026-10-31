@@ -20,8 +20,13 @@
   </header>
 
   <section id="explore" class="panel" role="tabpanel" hidden>
-    <p class="lead">Saved runs, each with its full interactive report. Every number in a report has a hover tooltip and an ⓘ explanation.</p>
-    <div id="runs" class="runs" aria-live="polite"><p class="muted">Loading runs…</p></div>
+    <div id="gallery">
+      <p class="lead">Saved runs, each with its full interactive report. Every number in a report has a hover tooltip and an ⓘ explanation. Tick <b>Compare</b> on two runs of the same suite to see what changed between them.</p>
+      <div id="filters" class="filters"></div>
+      <div id="compare-bar" class="compare-bar" hidden></div>
+      <div id="runs" class="runs" aria-live="polite"><p class="muted">Loading runs…</p></div>
+    </div>
+    <div id="compare-view" hidden></div>
   </section>
 
   <section id="rate" class="panel" role="tabpanel" hidden>

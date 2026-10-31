@@ -170,6 +170,12 @@ export const GLOSSARY = {
     means: 'Higher is better, but don\'t expect 100%: people disagree too. In the MT-Bench study (Zheng et al., 2023), expert raters agreed with each other 63–67% of the time counting ties, and 81–82% when both picked a winner; GPT-4 as a judge agreed with them about as often (66% and 85%). A judge near those numbers is about as good as a second person.',
     why: 'This is the number that says whether the head-to-head verdict can be trusted. Agreement by case shows where the judge is weakest, and the split by position consistency shows whether swapping the reply order is worth its cost.',
   },
+  extended: {
+    term: 'Extended run',
+    what: 'More conversations added to some cases after the original run, with the same models, settings, prompts and cases, to narrow their intervals.',
+    means: 'An extended case has more samples than the others. The date shows when they were added; vendors sometimes update a model without renaming it, so a long gap is worth noting.',
+    why: 'It settles a close case without paying to re-run everything. Each case can be extended once, with the number of repeats chosen up front, so that stopping as soon as a case happens to settle can\'t make luck look like a result.',
+  },
   analysis: {
     term: 'Analysis and recommendations',
     what: 'Notes written about this run by a person (or an assistant) after reading the results: what the numbers mean, likely causes, and what to try next.',

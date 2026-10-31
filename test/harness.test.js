@@ -340,3 +340,58 @@ test('what each rater preferred: longer replies, and more native language', asyn
   assert.ok(native.judge.rate < 0.6, 'the judge does not share that preference');
   assert.match(renderReport({ ...results, meta: { ...results.meta, humanRatings: { items } } }), /What each rater preferred/);
 });
+
+test('extending a run: same experiment only, once per case, merged and re-scored', async () => {
+  const { extensionPlan, mergeExtension, settleSize, caseRepeats } = await import('../src/extend.js');
+  const { runMirrored } = await import('../src/run.js');
+  const plan = loadPlan(parseArgs(['--mock', '--cases', 'baseline,english-only', '--turns', '3']));
+  const results = JSON.parse(JSON.stringify(await execute(plan, { budget: new Budget({ runCapUsd: 1 }) })));
+  const suite = loadSuite('suites/tutor-es');
+  const ext = extensionPlan(results, suite, { cases: ['english-only'], repeats: 2 });
+  assert.equal(ext.repeatStart, 1);
+  const budget = new Budget({ runCapUsd: 1 });
+  const out = await runMirrored({ ...plan, cases: [plan.cases[1]], repeats: 2, repeatStart: 1, budget });
+  const merged = mergeExtension(results, { cases: ['english-only'], repeats: 2, conversations: out.conversations, budget: budget.summary() }, suite);
+  assert.deepEqual(caseRepeats(merged), { baseline: 1, 'english-only': 3 });
+  assert.equal(merged.summary.comparison.turnsCompared, 3 * 3 * 2 + 3 * 2, 'english-only now has 3 repeats, baseline 1');
+  assert.equal(merged.meta.budget.calls, results.meta.budget.calls + budget.calls);
+  assert.match(renderReport(merged), /Extended/);
+  // Guards
+  assert.throws(() => extensionPlan(merged, suite, { cases: ['english-only'], repeats: 1 }), /Already extended once/);
+  assert.throws(() => extensionPlan(results, suite, { cases: ['praise-fishing'], repeats: 1 }), /isn't in this run/);
+  const changed = structuredClone(suite);
+  changed.prompts.coached += ' Be brief.';
+  assert.throws(() => extensionPlan(results, changed, { cases: ['baseline'], repeats: 1 }), /"coached" prompt has changed/);
+  changed.prompts.coached = suite.prompts.coached;
+  changed.cases.find((c) => c.id === 'baseline').goal += ' Also check the weather.';
+  assert.throws(() => extensionPlan(results, changed, { cases: ['baseline'], repeats: 1 }), /case "baseline" has changed/);
+  // Suggested size: a 71% case of 12 turns needs a few more repeats; a 50% case can't settle.
+  assert.equal(settleSize({ a: 8 / 12, tie: 1 / 12, b: 3 / 12, n: 12 }, 12).repeats, 3);
+  assert.equal(settleSize({ a: 0.5, tie: 0, b: 0.5, n: 12 }, 12), null);
+});
+
+test('comparing two runs: matchup, overall and per-case change, and when it is more than noise', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { compareRuns, matchup, diffInterval } = await import('../src/compare.js');
+  const { rescore } = await import('../src/analysis.js');
+  const a = JSON.parse(readFileSync('docs/sample-report/results.json', 'utf8'));
+  // An "after" run: the challenger renamed, and two cases swung its way.
+  const b = JSON.parse(JSON.stringify(a).replaceAll('flash-coached', 'flash-v2'));
+  for (const c of b.conversations) if (c.case === 'english-only') for (const h of c.history) if (h.verdict) h.verdict.winner = 'flash-v2';
+  rescore(b, loadSuite('suites/tutor-es'));
+  assert.deepEqual(matchup(a, b), { ok: true, kind: 'swap', baseline: 'flash-plain', challengerA: 'flash-coached', challengerB: 'flash-v2' });
+  const c = compareRuns(a, b);
+  const eng = c.cases.find((x) => x.case === 'english-only');
+  assert.equal(eng.after.rate, 1);
+  assert.ok(eng.flipped && eng.real, 'from losing the case to winning it, beyond noise');
+  assert.ok(!c.cases.find((x) => x.case === 'baseline').real, 'unchanged case: within noise');
+  assert.ok(c.overall.diff > 0);
+  const same = compareRuns(a, a);
+  assert.equal(same.kind, 'same');
+  assert.equal(same.overall.diff, 0);
+  assert.ok(!same.overall.real);
+  assert.equal(matchup(a, { ...a, meta: { ...a.meta, suite: { id: 'support-bikes' } } }).ok, false);
+  const [lo, hi] = diffInterval(0.5, 100, 0.7, 100);
+  assert.ok(lo > 0 && hi < 0.4, 'a 20-point change on 100 turns each is more than noise');
+  assert.match(renderReport(a), /How to settle the unsettled cases/);
+});

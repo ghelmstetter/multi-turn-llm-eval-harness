@@ -146,7 +146,7 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 21 tests, no keys needed
+npm test        # 24 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
@@ -156,7 +156,7 @@ The demo writes `results/demo/report.html`, a single file that opens in any brow
 
 The harness also has a browser front end, built on the same engine code as the command line, so both always report the same numbers. It runs entirely in the browser, with no server.
 
-- **Explore runs:** every published run, with its verdict, cost and full report. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm run app` (then http://localhost:8787/app/).
+- **Explore runs:** every published run, with its verdict, cost and full report. Tick two runs of the same suite to compare them: what changed overall and case by case, and whether each change is more than noise. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm run app` (then http://localhost:8787/app/).
 - **Rate blind:** pick the better of two anonymized replies (the same pairs the judge saw, names hidden, order shuffled), then see how often the LLM judge agreed with you, overall and by case. Sessions resume where you left off. Export your ratings and add them to a run's report with `report <results.json> --ratings ratings.json --rater "Your name"`.
 - **Run an eval** (planned): edit a suite and run it in the browser, with your own API key or free mock models.
 
@@ -174,6 +174,20 @@ To add a run to the gallery: `node src/cli.js report <results.json> --publish do
 ### Re-scoring and analysis notes
 
 Saved runs can be re-scored for free: after fixing a case check or changing a metric, `node src/cli.js report results/<run>/results.json --suite suites/tutor-es` re-runs the code graders on the saved transcripts (the judges' verdicts are kept) and rebuilds the report. Adding `--notes my-analysis.md` puts a written analysis and recommendations at the top of the report, next to the evidence.
+
+### Settling close cases: extend
+
+When a case's 95% interval still includes 50%, the report's By case section suggests how many more repeats would likely settle it, with the cost and the exact command:
+
+```bash
+node src/cli.js extend results/<run>/results.json --cases english-only --repeats 3
+```
+
+This adds conversations to the saved run, reusing its own models and settings, and re-scores it. Guards keep it honest: it refuses if the suite's prompts, cases, simulated user or rubric have changed since the run, and **each case can be extended once**, with the number of repeats chosen up front. Adding a few at a time until a case happens to settle would make luck look like a result. The report records every extension with its date.
+
+### Comparing two runs
+
+`node src/cli.js compare <before/results.json> <after/results.json>` writes a comparison page, and the web app shows the same thing when you tick two runs. Typically both runs pit the same baseline against a challenger (for example the plain prompt vs. the coached prompt, then vs. a fixed version), and the page shows the challenger's win rate in each run, overall and per case, with the change and its 95% interval. It also puts the code metrics, rubric scores, cost and speed side by side. The suite's `coached-v2` prompt and [`examples/targets-fixes.json`](examples/targets-fixes.json) set up exactly that follow-up to the first run.
 
 ### Cost, speed and value
 
@@ -304,6 +318,8 @@ src/
   load-browser.js     the same over HTTP (web app), so the engine never touches files itself
   run-index.js        the gallery's list of published runs
   ratings.js          blind human rating: items, balanced samples, judge-vs-human agreement
+  extend.js           adding repeats to a saved run, with its guards and settle-size suggestions
+  compare.js          what changed between two runs, and whether it's more than noise
   targets/            Gemini, OpenAI, Anthropic and mock adapters, retries
   report/             a self-contained HTML report: charts, glossary, verdict, shared styles
 suites/               the Spanish tutor and customer-support suites
