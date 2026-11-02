@@ -37,8 +37,12 @@ export function winShareChart(rows, names) {
     let x = lw;
     const segs = parts.map(([v, c, who], k) => {
       const w = Math.max(0, v * bw - (k < parts.length - 1 ? 2 : 0)); // 2px surface gap between segments
-      const tip = `${who}: ${pct(v)} of ${r.n} comparisons (${r.label.toLowerCase()})`;
-      const label = w > 34 ? `<text x="${x + w / 2}" y="${y + bh / 2 + 4}" class="in ${c === '--tie' ? 'dark' : ''}" text-anchor="middle">${pct(v)}</text>` : '';
+      const tip = `${who}: ${Math.round(v * r.n)} of ${r.n} comparisons, ${pct(v)} (${r.label.toLowerCase()})`;
+      // "33%" plus a smaller "4 of 12", so it's clear where each percentage comes from; just
+      // the percentage when the segment is too narrow for both.
+      const count = Math.round(v * r.n);
+      const both = w > 96;
+      const label = w > 34 ? `<text x="${x + w / 2}" y="${y + bh / 2 + 4}" class="in ${c === '--tie' ? 'dark' : ''}" text-anchor="middle">${pct(v)}${both ? `<tspan class="of" dx="6">${count} of ${r.n}</tspan>` : ''}</text>` : '';
       const out = `<path d="${seg(x, y, w, bh, { left: k === 0, right: k === parts.length - 1 })}" style="fill:var(${c})" data-tip="${esc(tip)}"/>${label}`;
       x += w + 2;
       return out;
