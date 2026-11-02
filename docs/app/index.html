@@ -43,13 +43,14 @@
   <dialog id="cli-help" class="cli-help" aria-labelledby="cli-title">
     <div class="cli-head"><h2 id="cli-title">Run an eval from the command line</h2><button type="button" class="close" data-close aria-label="Close">✕</button></div>
     <p class="lead">Everything the web app shows comes from the same engine as these commands. The command line runs any suite, saves the results and writes a self-contained report you can open in any browser.</p>
-
-    <h3>1. Set up (once)</h3>
+    <div class="cli-tabs" role="tablist" aria-label="Command-line help"><button type="button" role="tab" id="cli-tab-setup" aria-controls="cli-setup" data-cli-tab="setup">Set up <span class="muted small">(once)</span></button><button type="button" role="tab" id="cli-tab-run" aria-controls="cli-run" data-cli-tab="run">Run</button><button type="button" role="tab" id="cli-tab-settle" aria-controls="cli-settle" data-cli-tab="settle">Settle and compare</button><button type="button" role="tab" id="cli-tab-suite" aria-controls="cli-suite" data-cli-tab="suite">Your own suite</button></div>
+    <section class="cli-panel" id="cli-setup" role="tabpanel" aria-labelledby="cli-tab-setup" hidden>
+    <h3>1. Install</h3>
     <p>You need <a href="https://nodejs.org/">Node.js</a> 20 or later and <a href="https://git-scm.com/">Git</a>. There's nothing else to install: the harness has no dependencies. In a terminal:</p>
     <div class="cmdbox"><code class="cmd">git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness</code><button type="button" class="copy" data-copy="git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness">Copy</button></div>
     <div class="cmdbox"><code class="cmd">cd multi-turn-llm-eval-harness</code><button type="button" class="copy" data-copy="cd multi-turn-llm-eval-harness">Copy</button></div>
     <div class="cmdbox"><code class="cmd">npm test</code><button type="button" class="copy" data-copy="npm test">Copy</button></div>
-    <p class="small muted">Run every command below from that folder. To get later updates, run <code>git pull</code> there.</p>
+    <p class="small muted">Run every command in these instructions from that folder. To get later updates, run <code>git pull</code> there.</p>
 
     <h3>2. Try it free, with mock models</h3>
     <div class="cmdbox"><code class="cmd">npm run demo</code><button type="button" class="copy" data-copy="npm run demo">Copy</button></div>
@@ -61,28 +62,16 @@
 OPENAI_API_KEY=your-key-here
 ANTHROPIC_API_KEY=your-key-here</pre>
     <p class="small muted">The file is ignored by Git, so it won't be committed. Never paste keys into chats, issues or screenshots.</p>
-
-    <h3>4. Check the cost and time, for free</h3>
+    </section>
+    <section class="cli-panel" id="cli-run" role="tabpanel" aria-labelledby="cli-tab-run" hidden>
+    <p class="first-time small">First time? Start with <button type="button" class="linkish" data-cli-tab="setup">Set up</button>: install, a free demo and your API key.</p>
+    <h3>1. Check the cost and time, for free</h3>
     <div class="cmdbox"><code class="cmd">node src/cli.js estimate --suite suites/tutor-es --targets examples/targets.json</code><button type="button" class="copy" data-copy="node src/cli.js estimate --suite suites/tutor-es --targets examples/targets.json">Copy</button></div>
     <p>This shows the estimated cost and time without calling any model. A full run of the tutor suite costs about $1 and takes about half an hour with Gemini Flash.</p>
 
-    <h3>5. Run it</h3>
+    <h3>2. Run it</h3>
     <div class="cmdbox"><code class="cmd">node src/cli.js run --suite suites/tutor-es --targets examples/targets.json --out results/my-run</code><button type="button" class="copy" data-copy="node src/cli.js run --suite suites/tutor-es --targets examples/targets.json --out results/my-run">Copy</button></div>
     <p>It shows the estimate and asks before starting, then prints progress with the time left. When it finishes, open <code>results/my-run/report.html</code>. Spending caps keep it safe: $1 per run and $5 per day by default; a run that reaches a cap stops cleanly and keeps what it finished.</p>
-
-    <h3>6. Settle a close case</h3>
-    <p>If a case is "not settled", the report's <b>By case</b> section lists how many more repeats would likely settle it, with the cost, time and the exact command to copy, like:</p>
-    <div class="cmdbox"><code class="cmd">node src/cli.js extend results/my-run/results.json --cases english-only --repeats 3</code><button type="button" class="copy" data-copy="node src/cli.js extend results/my-run/results.json --cases english-only --repeats 3">Copy</button></div>
-    <p class="small muted">Each case can be extended once, so use the suggested number rather than adding a few at a time.</p>
-
-    <h3>7. Compare two runs</h3>
-    <div class="cmdbox"><code class="cmd">node src/cli.js compare results/run-a/results.json results/run-b/results.json --out compare.html</code><button type="button" class="copy" data-copy="node src/cli.js compare results/run-a/results.json results/run-b/results.json --out compare.html">Copy</button></div>
-    <p>Shows what changed between two runs of the same suite, overall and case by case, and whether each change is more than noise.</p>
-
-    <h3>8. Test your own product</h3>
-    <p>Copy an example suite, edit it, and check it as you go:</p>
-    <div class="cmdbox"><code class="cmd">node src/cli.js validate --suite suites/my-product --targets my-targets.json</code><button type="button" class="copy" data-copy="node src/cli.js validate --suite suites/my-product --targets my-targets.json">Copy</button></div>
-    <p>The <a href="https://github.com/ghelmstetter/multi-turn-llm-eval-harness/blob/main/docs/writing-a-suite.md">guide to writing a suite</a> walks through it, and takes about an hour for a first useful suite.</p>
 
     <h3>Useful options</h3>
     <div class="tw"><table>
@@ -97,6 +86,23 @@ ANTHROPIC_API_KEY=your-key-here</pre>
       <tr><td><code>--yes</code></td><td>Don't ask before running</td><td>off</td></tr>
     </table></div>
     <p class="small muted">For every command and option: <code>node src/cli.js</code>. The <a href="https://github.com/ghelmstetter/multi-turn-llm-eval-harness#readme">README</a> covers how the modes and graders work.</p>
+    </section>
+    <section class="cli-panel" id="cli-settle" role="tabpanel" aria-labelledby="cli-tab-settle" hidden>
+    <h3>Settle a close case</h3>
+    <p>If a case is "not settled", the report's <b>By case</b> section lists how many more repeats would likely settle it, with the cost, time and the exact command to copy, like:</p>
+    <div class="cmdbox"><code class="cmd">node src/cli.js extend results/my-run/results.json --cases english-only --repeats 3</code><button type="button" class="copy" data-copy="node src/cli.js extend results/my-run/results.json --cases english-only --repeats 3">Copy</button></div>
+    <p class="small muted">Each case can be extended once, so use the suggested number rather than adding a few at a time.</p>
+
+    <h3>Compare two runs</h3>
+    <div class="cmdbox"><code class="cmd">node src/cli.js compare results/run-a/results.json results/run-b/results.json --out compare.html</code><button type="button" class="copy" data-copy="node src/cli.js compare results/run-a/results.json results/run-b/results.json --out compare.html">Copy</button></div>
+    <p>Shows what changed between two runs of the same suite, overall and case by case, and whether each change is more than noise.</p>
+    </section>
+    <section class="cli-panel" id="cli-suite" role="tabpanel" aria-labelledby="cli-tab-suite" hidden>
+    <h3>Test your own product</h3>
+    <p>Copy an example suite, edit it, and check it as you go:</p>
+    <div class="cmdbox"><code class="cmd">node src/cli.js validate --suite suites/my-product --targets my-targets.json</code><button type="button" class="copy" data-copy="node src/cli.js validate --suite suites/my-product --targets my-targets.json">Copy</button></div>
+    <p>The <a href="https://github.com/ghelmstetter/multi-turn-llm-eval-harness/blob/main/docs/writing-a-suite.md">guide to writing a suite</a> walks through it, and takes about an hour for a first useful suite.</p>
+    </section>
   </dialog>
 
   <footer class="muted small">

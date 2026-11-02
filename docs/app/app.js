@@ -149,6 +149,22 @@ show();
   const dlg = document.getElementById('cli-help');
   dlg.addEventListener('close', () => { if (location.hash === '#cli') history.replaceState(null, '', '#run'); show(); });
   dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+  // Tabs: opens on Run (or the last tab used); Set up is a click away for first-timers.
+  const pick = (k) => {
+    for (const t of dlg.querySelectorAll('[role=tab]')) t.setAttribute('aria-selected', String(t.dataset.cliTab === k));
+    for (const p of dlg.querySelectorAll('.cli-panel')) p.hidden = p.id !== `cli-${k}`;
+    try { localStorage.setItem('mtle-cli-tab', k); } catch { /* storage blocked */ }
+  };
+  let first = 'run';
+  try { first = localStorage.getItem('mtle-cli-tab') ?? 'run'; } catch { /* storage blocked */ }
+  pick(dlg.querySelector(`#cli-${first}`) ? first : 'run');
+  for (const b of dlg.querySelectorAll('[data-cli-tab]')) b.addEventListener('click', () => { pick(b.dataset.cliTab); dlg.querySelector('[aria-selected=true]').focus(); });
+  dlg.querySelector('[role=tablist]').addEventListener('keydown', (e) => {
+    const tabs = [...dlg.querySelectorAll('[role=tab]')];
+    const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+    const to = e.key === 'ArrowRight' ? (at + 1) % tabs.length : e.key === 'ArrowLeft' ? (at + tabs.length - 1) % tabs.length : -1;
+    if (to >= 0) { e.preventDefault(); pick(tabs[to].dataset.cliTab); tabs[to].focus(); }
+  });
   for (const b of dlg.querySelectorAll('button.copy[data-copy]')) b.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500); } catch { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); }
   });

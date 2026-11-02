@@ -72,3 +72,7 @@ button.close{border:0;background:none;font-size:1.1rem;color:var(--fg2);padding:
 .cmdbox{display:flex;align-items:flex-start;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:6px 0}
 .cmdbox code.cmd{flex:1;font-size:.82rem}
 pre.cmd{white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.82rem}
+.cli-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:4px 0 6px;overflow-x:auto;position:sticky;top:44px;background:var(--bg);z-index:1}
+.cli-tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;color:var(--fg2);padding:8px 12px;margin-bottom:-1px;white-space:nowrap;font-weight:500}
+.cli-tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.cli-panel{min-height:300px}.first-time{margin:10px 0 0;color:var(--fg2)}
