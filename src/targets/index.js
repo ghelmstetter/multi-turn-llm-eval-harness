@@ -35,7 +35,7 @@ export async function checkResponse(res, vendor) {
  * Build a callable target from its config:
  * { id, vendor, model, temperature?, maxTokens?, prompt?, price: { input, output } (USD per 1M tokens), behavior? (mock only) }
  */
-export function makeTarget(cfg, { fetchImpl = fetch, env = process.env, mock = false, retry } = {}) {
+export function makeTarget(cfg, { fetchImpl = fetch, env = globalThis.process?.env ?? {}, mock = false, retry } = {}) {
   const spec = mock ? { ...cfg, vendor: 'mock', behavior: cfg.mockBehavior ?? cfg.behavior ?? 'concise' } : cfg;
   const impl = VENDORS[spec.vendor];
   if (!impl) throw new Error(`Unknown vendor "${spec.vendor}" for target ${cfg.id}`);

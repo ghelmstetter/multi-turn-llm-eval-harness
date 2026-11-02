@@ -400,3 +400,14 @@ test('comparing two runs: matchup, overall and per-case change, and when it is m
   assert.ok(lo > 0 && hi < 0.4, 'a 20-point change on 100 turns each is more than noise');
   assert.match(renderReport(a), /How to settle the unsettled cases/);
 });
+
+test('the Stop button: a stopped budget ends the run cleanly, marked partial', async () => {
+  const plan = loadPlan(parseArgs(['--mock', '--cases', 'baseline,english-only', '--turns', '3']));
+  const budget = new Budget({ runCapUsd: 1 });
+  let calls = 0;
+  for (const t of [...plan.targets, plan.user, plan.judge]) { const chat = t.chat; t.chat = async (req) => { if (++calls === 10) budget.stop(); return chat(req); }; }
+  const results = await execute(plan, { budget });
+  assert.equal(results.partial, true);
+  assert.equal(results.stopReason, 'Stopped by you');
+  assert.ok(results.conversations.length >= 1);
+});

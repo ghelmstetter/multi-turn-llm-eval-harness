@@ -24,8 +24,12 @@ export class Budget {
 
   get spentToday() { return this.spentBefore + this.spent; }
 
-  /** Throws BudgetExceeded before a call if either cap is already reached. */
+  /** Stop the run before its next model call; it ends cleanly, marked partial (the Stop button). */
+  stop(reason = 'Stopped by you') { this.stopReason = reason; }
+
+  /** Throws BudgetExceeded before a call if the run was stopped or either cap is already reached. */
   check() {
+    if (this.stopReason) throw new BudgetExceeded(this.stopReason);
     if (this.spent >= this.runCapUsd) throw new BudgetExceeded(`Run cap of $${this.runCapUsd.toFixed(2)} reached`);
     if (this.spentToday >= this.dailyCapUsd) throw new BudgetExceeded(`Daily evaluation cap of $${this.dailyCapUsd.toFixed(2)} reached`);
   }

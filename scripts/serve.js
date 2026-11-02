@@ -25,8 +25,8 @@ createServer(async (req, res) => {
   let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (path === '/') { res.writeHead(302, { Location: '/app/' }); return res.end(); }
   if (path.endsWith('/')) path += 'index.html';
-  // /src/* and /suites/* come from the repo; everything else from docs/.
-  const base = /^\/(src|suites)\//.test(path) ? root : join(root, 'docs');
+  // /src/*, /suites/* and /examples/* come from the repo; everything else from docs/.
+  const base = /^\/(src|suites|examples)\//.test(path) ? root : join(root, 'docs');
   const file = normalize(join(base, path));
   if (!file.startsWith(base + sep)) { res.writeHead(403); return res.end(); }
   try {

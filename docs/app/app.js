@@ -3,6 +3,7 @@
 import { REPORT_CSS } from '../src/report/styles.js';
 import { popovers } from '../src/report/glossary.js';
 import { mountRate } from './rate.js';
+import { mountRun } from './run.js';
 import { comparisonSection } from '../src/report/compare-html.js';
 
 // Shared styles first, so app.css can build on them.
@@ -17,6 +18,7 @@ const date = (iso) => { try { return new Date(iso).toLocaleDateString(undefined,
 
 // ---- Tabs (the URL hash keeps the current tab, so links and the back button work) ----
 const TABS = ['explore', 'rate', 'run'];
+let runMounted = false;
 function show() {
   const h = location.hash.slice(1);
   const tab = h.startsWith('compare') ? 'explore' : h === 'cli' ? 'run' : TABS.includes(h) ? h : 'explore';
@@ -25,6 +27,8 @@ function show() {
   if (h === 'cli' && !dlg.open) dlg.showModal();
   if (h !== 'cli' && dlg.open) dlg.close();
   showCompare(h.startsWith('compare') ? new URLSearchParams(h.split('?')[1] ?? '') : null);
+  // The runner loads its suite and defaults the first time the Run tab is opened.
+  if (tab === 'run' && !runMounted) { runMounted = true; mountRun(document.getElementById('run-box')).catch((e) => { document.getElementById('run-box').innerHTML = `<p class="err">Couldn't start the runner: ${esc(e.message)}</p>`; }); }
   for (const t of TABS) document.getElementById(t).hidden = t !== tab;
   for (const a of document.querySelectorAll('.tabs a')) a.setAttribute('aria-selected', String(a.dataset.tab === tab));
 }

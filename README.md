@@ -147,7 +147,7 @@ Requires Node.js 20 or later. There are no dependencies to install.
 ```bash
 git clone https://github.com/ghelmstetter/multi-turn-llm-eval-harness
 cd multi-turn-llm-eval-harness
-npm test        # 24 tests, no keys needed
+npm test        # 25 tests, no keys needed
 npm run demo    # a mirrored run with mock models: no keys, no cost
 ```
 
@@ -159,7 +159,7 @@ The harness also has a browser front end, built on the same engine code as the c
 
 - **Explore runs:** every published run, with its verdict, cost and full report. Tick two runs of the same suite to compare them: what changed overall and case by case, and whether each change is more than noise. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm start` (then http://localhost:8787/app/), or on Windows by double-clicking `start-app.bat`, which also opens the page.
 - **Rate blind:** pick the better of two anonymized replies (the same pairs the judge saw, names hidden, order shuffled), then see how often the LLM judge agreed with you, overall and by case. Sessions resume where you left off. Export your ratings and add them to a run's report with `report <results.json> --ratings ratings.json --rater "Your name"`.
-- **Run an eval:** [step-by-step command-line instructions](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/#cli) today; running in the browser (edit a suite, use your own API key or free mock models) is planned.
+- **Run an eval:** run a suite in the browser: pick an example suite or import your own, edit its prompts (with the same live validation as the CLI), choose two targets, and run free with mock models or with your own API keys. Replies appear as they arrive, with progress, cost so far and a Stop button; the finished report shows in the page, and its results.json works with every CLI command. Keys stay in the page's memory unless you choose to remember them, and go only to their own vendor. [Step-by-step command-line instructions](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/#cli) are there too.
 
 To add a run to the gallery: `node src/cli.js report <results.json> --publish docs/runs/index.json --title "…"`.
 
@@ -319,6 +319,7 @@ src/
   load-browser.js     the same over HTTP (web app), so the engine never touches files itself
   run-index.js        the gallery's list of published runs
   ratings.js          blind human rating: items, balanced samples, judge-vs-human agreement
+  engine.js           building, estimating and executing a run plan (shared by the CLI and the web app)
   extend.js           adding repeats to a saved run, with its guards and settle-size suggestions
   compare.js          what changed between two runs, and whether it's more than noise
   targets/            Gemini, OpenAI, Anthropic and mock adapters, retries

@@ -82,3 +82,31 @@ pre.cmd{white-space:pre;overflow-x:auto;background:var(--card);border:1px solid 
 .cli-panel{min-height:300px}.first-time{margin:10px 0 0;color:var(--fg2)}
 .cli-tabs .short{display:none}
 @media (max-width:520px){.cli-tabs .long{display:none}.cli-tabs .short{display:inline}.cli-tabs button{padding-left:10px;padding-right:10px}}
+
+/* Run an eval */
+.runner{display:flex;flex-direction:column;gap:14px;max-width:900px}
+.step h3{display:flex;align-items:center;gap:8px;margin:6px 0 4px}
+.step .n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--bg);font-size:.82rem}
+.row{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:flex-end}
+.row .field{margin:6px 0}
+.target{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:flex-end;border-top:1px solid var(--line);padding:8px 0}
+.target:first-child{border-top:0}
+.target .sw{width:12px;height:36px;border-radius:3px;align-self:center}
+.target .field{margin:4px 0}.target input[type=text]{width:190px}
+.target .role{align-self:center;width:120px}
+.price input{width:70px}
+.check{display:flex;gap:8px;align-items:flex-start;margin:8px 0;cursor:pointer}.check input{margin-top:3px;accent-color:var(--accent)}
+fieldset.cases{border:1px solid var(--line);border-radius:8px;padding:4px 12px;margin:6px 0}
+fieldset.cases legend{font-size:.88rem;font-weight:600;padding:0 4px}
+fieldset.cases .check{margin:4px 0}
+input[type=number],input[type=password]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--axis);border-radius:8px;padding:7px 10px;max-width:100%}
+input[type=number]{width:110px}input[type=password]{width:360px}
+textarea{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--fg);background:var(--bg);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;width:100%;resize:vertical}
+details.json{margin-top:8px}
+.problems{border:1px solid var(--bad);border-radius:8px;padding:6px 14px;margin-top:10px;color:var(--fg)}.problems b{color:var(--bad)}.problems ul{margin:4px 0;padding-left:20px}
+.estimate{margin:4px 0 10px}
+.feed{display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto;margin-top:8px}
+.feed .msg{max-width:100%}.feed .conv{margin:6px 0 0}
+.runner.is-running .step:not(#r-go){opacity:.55}
+.result iframe{width:100%;height:80vh;min-height:500px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+@media (max-width:640px){.target input[type=text],input[type=password]{width:100%}.target .field{flex:1 1 100%}}

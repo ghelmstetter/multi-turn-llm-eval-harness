@@ -4,7 +4,11 @@ import { checkResponse } from './index.js';
 export async function anthropicChat({ system, messages, json = false, model, temperature, maxTokens, key, fetchImpl }) {
   const res = await fetchImpl('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+    headers: {
+      'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json',
+      // Anthropic requires this opt-in for calls straight from a web page (the web app's runner).
+      ...(typeof window !== 'undefined' ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}),
+    },
     body: JSON.stringify({
       model,
       max_tokens: maxTokens ?? 1024,
