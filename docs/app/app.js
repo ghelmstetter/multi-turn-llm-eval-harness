@@ -17,11 +17,12 @@ const usd = (x) => (x == null ? '–' : `$${x.toFixed(2)}`);
 const date = (iso) => { try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return ''; } };
 
 // ---- Tabs (the URL hash keeps the current tab, so links and the back button work) ----
-const TABS = ['explore', 'rate', 'run'];
+// Tab order: Run Eval, Blind Rating, Previous Runs. The hashes stay #run, #rate, #explore so old links work.
+const TABS = ['run', 'rate', 'explore'];
 let runMounted = false;
 function show() {
   const h = location.hash.slice(1);
-  const tab = h.startsWith('compare') ? 'explore' : h === 'cli' ? 'run' : TABS.includes(h) ? h : 'explore';
+  const tab = h.startsWith('compare') ? 'explore' : h === 'cli' ? 'run' : TABS.includes(h) ? h : 'run';
   // #cli opens the command-line instructions over the Run tab, so the link can be shared.
   const dlg = document.getElementById('cli-help');
   if (h === 'cli' && !dlg.open) dlg.showModal();
@@ -133,7 +134,7 @@ async function showCompare(params) {
   view.hidden = false;
   if (!RUNS.length) { view.innerHTML = '<p class="muted">Loading…</p>'; return; } // re-shown when the runs load
   const runs = [params.get('a'), params.get('b')].map((id) => RUNS.find((r) => r.id === id));
-  const back = '<p class="back"><a href="#explore">← All runs</a></p>';
+  const back = '<p class="back"><a href="#explore">← Previous runs</a></p>';
   if (runs.some((r) => !r)) { view.innerHTML = `${back}<p class="err">One of those runs isn't in the gallery any more.</p>`; return; }
   view.innerHTML = `${back}<p class="muted">Loading both runs…</p>`;
   try {

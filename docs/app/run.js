@@ -1,4 +1,4 @@
-// Run an eval in the browser: pick or edit a suite, choose targets, add keys (or use free mock
+// Run Eval: run an eval in the browser: pick or edit a suite, choose targets, add keys (or use free mock
 // models), check the estimate, run, watch it live, and get the full report. Same engine as the
 // CLI (../src), so the results.json it produces works with every CLI command.
 // Keys stay in this page's memory (or this browser's storage, if the user opts in) and are sent

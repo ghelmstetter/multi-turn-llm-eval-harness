@@ -319,7 +319,7 @@ export function renderReport(results, { home = null, resultsPath = null } = {}) 
 <title>Eval report: ${esc(meta.suite.title)}</title>
 <style>
 ${REPORT_CSS}</style></head><body><main>
-${home ? `<p class="back"><a href="${esc(home)}">← All runs</a></p>` : ''}<h1>Multi-Turn LLM Eval Harness</h1>
+${home ? `<p class="back"><a href="${esc(home)}">← Previous runs</a></p>` : ''}<h1>Multi-Turn LLM Eval Harness</h1>
 <p class="subhead">Report: ${esc(meta.suite.title)}</p>
 <p class="muted small">${esc(meta.mode)} mode ${meta.mode === 'mirrored' ? info('mirrored') : ''} · ${meta.cases.length} case(s) × ${meta.repeats} repeat(s) × ${meta.turns} turns · judge: ${esc(meta.judge.vendor)} ${esc(meta.judge.model ?? '')} · simulated user ${info('simulatedUser')}: ${esc(meta.user.vendor)} ${esc(meta.user.model ?? '')} · ${esc(meta.startedAt)} · <a href="#glossary">Glossary</a></p>
 ${(meta.extensions ?? []).length ? `<p class="muted small">Extended ${info('extended')}: ${meta.extensions.map((e) => `${e.cases.map((c) => esc((meta.caseInfo ?? []).find((x) => x.id === c)?.title ?? c)).join(', ')} +${e.repeats} repeat${e.repeats > 1 ? 's' : ''} on ${esc(String(e.at).slice(0, 10))}${e.partial ? ' (stopped early)' : ''}`).join('; ')}.</p>` : ''}

@@ -1,4 +1,4 @@
-// Rate blind: pick the better of two anonymized replies, turn by turn, then see how often the
+// Blind Rating: pick the better of two anonymized replies, turn by turn, then see how often the
 // LLM judge agreed. Ratings stay in this browser (so a session can be resumed) and export as
 // ratings.json, which the CLI adds to a run's report with `report … --ratings ratings.json`.
 import { ratingItems, sampleItems } from '../src/ratings.js';
@@ -30,7 +30,7 @@ export function mountRate(el, runs, loadResults) {
 function startScreen(runs, loadResults) {
   const opts = runs.map((r) => `<option value="${esc(r.id)}">${esc(r.title)}</option>`).join('');
   box.innerHTML = `<div class="rate-start card">
-    <h2>Rate blind</h2>
+    <h2>Blind Rating</h2>
     <p>You'll see a moment from a conversation, then two replies that could come next, labeled only <b>Reply 1</b> and <b>Reply 2</b>. Pick the better one, or call it a tie. The names are hidden and the order is shuffled every time. These are the same pairs the LLM judge compared, so at the end you'll see how often it agreed with you.</p>
     <label class="field"><span>Run</span><select id="rate-run">${opts}</select></label>
     <label class="field"><span>How many turns</span><select id="rate-n"></select></label>
