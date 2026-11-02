@@ -7,6 +7,10 @@ import { loadSuite, attachWordList, validateLoaded, localSpendStore } from '../s
 import { buildPlan, estimateFor, execute } from '../src/engine.js';
 import { Budget, SECONDS_PER_CALL, durationText } from '../src/budget.js';
 import { renderReport } from '../src/report/html.js';
+import { extensionPlan, mergeExtension, settleSize, extensionEstimate, caseRepeats, extendedCases } from '../src/extend.js';
+import { byCase } from '../src/analysis.js';
+import { makeTarget } from '../src/targets/index.js';
+import { runMirrored, runIndependent } from '../src/run.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const usd = (x) => `$${x < 0.1 ? x.toFixed(3) : x.toFixed(2)}`;
@@ -42,6 +46,7 @@ export async function mountRun(el) {
   });
   S.cfg.targets = S.cfg.targets.slice(0, 2);
   render();
+  markReady();
   await chooseExample(EXAMPLES[0]);
 }
 
@@ -89,6 +94,7 @@ async function onSuiteEdited(text) {
 // ---------- rendering ----------
 function render() {
   box.innerHTML = `<div class="runner">
+    <p class="open-saved small">Have a saved run? <button type="button" class="linkish" id="r-open-saved">Open its results.json</button> to see its report and settle its close cases. <input type="file" id="r-saved" accept=".json,application/json" hidden></p>
     <section class="card step" id="r-suite"><h3><span class="n">1</span> The suite</h3>
       <p class="small muted">What the assistant is, how it's prompted, the situations to test and how to judge them.</p>
       <div class="row">
@@ -125,6 +131,17 @@ function render() {
     </section>
     <section id="r-result"></section>
   </div>`;
+  box.querySelector('#r-open-saved').addEventListener('click', () => box.querySelector('#r-saved').click());
+  box.querySelector('#r-saved').addEventListener('change', async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const results = JSON.parse(await f.text());
+      if (!results?.meta?.targets || !Array.isArray(results.conversations)) throw new Error('this doesn\'t look like a results.json from the harness');
+      showResult(results, { from: f.name });
+    } catch (err) { box.querySelector('#r-result').innerHTML = `<p class="err">Couldn't open ${esc(f.name)}: ${esc(err.message)}</p>`; }
+    e.target.value = '';
+  });
   box.querySelector('#r-example').addEventListener('change', (e) => {
     if (e.target.value === 'import') { box.querySelector('#r-file').click(); return; }
     chooseExample(EXAMPLES.find((x) => x.id === e.target.value));
@@ -353,10 +370,27 @@ async function run() {
   showResult(results);
 }
 
-function showResult(results) {
+/** Open a published run (from the Previous Runs gallery) to view and extend it. */
+export async function openSavedRun(url, title = '') {
+  await ready;
+  const el = box.querySelector('#r-result');
+  el.innerHTML = '<p class="muted">Loading the run…</p>';
+  el.scrollIntoView({ block: 'start' });
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`it returned ${res.status}`);
+    showResult(await res.json(), { from: title || 'the gallery' });
+  } catch (e) { el.innerHTML = `<p class="err">Couldn't load the run: ${esc(e.message)}</p>`; }
+}
+let markReady;
+const ready = new Promise((r) => { markReady = r; });
+
+function showResult(results, { from = null } = {}) {
+  S.results = results;
   const html = renderReport(results);
   const el = box.querySelector('#r-result');
-  el.innerHTML = `<div class="card result"><h3>The report</h3>
+  el.innerHTML = `<div class="card result"><h3>The report${from ? ` <span class="muted small">from ${esc(from)}</span>` : ''}</h3>
+    <div id="r-extend"></div>
     <p class="actions"><button type="button" class="primary" id="r-dl">Download results.json</button><button type="button" id="r-dl-html">Download report.html</button><button type="button" id="r-open">Open in a new tab</button></p>
     <p class="small muted">results.json works with every command-line command: re-score it, extend it, compare it with another run, or publish it. Nothing is saved anywhere unless you download it.</p>
     <iframe id="r-frame" title="Report" sandbox="allow-scripts allow-popups"></iframe></div>`;
@@ -365,7 +399,112 @@ function showResult(results) {
   el.querySelector('#r-dl').addEventListener('click', () => download('results.json', JSON.stringify(results, null, 2), 'application/json'));
   el.querySelector('#r-dl-html').addEventListener('click', () => download('report.html', html, 'text/html'));
   el.querySelector('#r-open').addEventListener('click', () => { const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })); window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 60000); });
+  renderExtend(results);
   el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+// ---------- settling close cases: extend, in the browser ----------
+function renderExtend(results) {
+  const panel = box.querySelector('#r-extend');
+  const m = results.meta;
+  const title = (id) => (m.caseInfo ?? []).find((c) => c.id === id)?.title ?? id;
+  const done = extendedCases(results);
+  const reps = caseRepeats(results);
+  const open = byCase(results).filter((c) => c.share?.interval && !c.share.interval.settled);
+  if (results.partial) { panel.innerHTML = '<p class="small muted">This run stopped early, so it can\'t be extended; run it again instead.</p>'; return; }
+  if (!open.length) { panel.innerHTML = '<p class="small muted">Every case in this run is settled: nothing to extend.</p>'; return; }
+  const rows = open.map((c) => {
+    if (done.has(c.case)) return `<tr><th>${esc(title(c.case))}</th><td>${c.share.n}</td><td colspan="3" class="muted">Already extended once. To settle it, plan a new run with more repeats.</td></tr>`;
+    const s = settleSize(c.share, c.share.n / (reps[c.case] || 1));
+    const k = s?.repeats ?? 3;
+    return `<tr data-case="${esc(c.case)}"><th>${esc(title(c.case))}</th><td>${c.share.n}</td>
+      <td><input type="number" min="1" max="10" value="${k}" class="ext-n" aria-label="More repeats for ${esc(title(c.case))}">${s ? `<span class="small muted"> suggested</span>` : '<span class="small muted"> (unlikely to settle with 5 or fewer)</span>'}</td>
+      <td class="ext-est small"></td><td><button type="button" class="ext-go">Extend</button></td></tr>`;
+  }).join('');
+  panel.innerHTML = `<details class="extend"${S.extendOpen === false ? '' : ' open'}><summary><b>Settle the close cases</b> <span class="muted small">${open.length} not settled</span></summary>
+    <p class="small">Add more conversations to a case to narrow its interval. The suggested number would likely settle it even if its lead shrank by a quarter. Choose the number once: each case can be extended once, because adding a few at a time until a case happens to settle makes luck look like a result.${m.mock ? ' This is a mock run, so extending it is free.' : ` Uses the run's own models and settings, with your ${[...new Set([...m.targets, m.user, m.judge].map((t) => VENDORS[t.vendor]?.name ?? t.vendor))].join(' and ')} key from step 3.`}</p>
+    <div class="tw"><table><tr><th>Case</th><th>Turns now</th><th>More repeats</th><th>Estimated</th><th></th></tr>${rows}</table></div>
+    <p class="ext-status small" aria-live="polite"></p></details>`;
+  panel.querySelector('details').addEventListener('toggle', (e) => { S.extendOpen = e.target.open; });
+  const est = (tr) => {
+    const n = Math.max(1, Math.min(10, Number(tr.querySelector('.ext-n').value) || 1));
+    const e = extensionEstimate(results, 1, n);
+    tr.querySelector('.ext-est').textContent = m.mock ? `free, ${durationText(e.calls * 0.05)}` : `${usd(e.usd)}, ${durationText(e.seconds)}`;
+  };
+  for (const tr of panel.querySelectorAll('tr[data-case]')) {
+    est(tr);
+    tr.querySelector('.ext-n').addEventListener('input', () => est(tr));
+    tr.querySelector('.ext-go').addEventListener('click', () => extendCase(results, tr.dataset.case, Number(tr.querySelector('.ext-n').value)));
+  }
+}
+
+async function extendCase(results, caseId, repeats) {
+  const panel = box.querySelector('#r-extend');
+  const status = panel.querySelector('.ext-status');
+  const say = (msg, bad = false) => { status.innerHTML = msg; status.className = `ext-status small${bad ? ' fail' : ''}`; };
+  if (S.running) { say('Another run is in progress.', true); return; }
+  const m = results.meta;
+  // The run's own suite: the one in step 1 if it matches, otherwise the example with that id.
+  let suite = S.suite?.id === m.suite.id ? S.suite : null;
+  if (!suite) {
+    try { suite = await loadSuite(new URL(`../suites/${m.suite.id}/`, import.meta.url).href); } catch { /* not an example */ }
+  }
+  if (!suite) { say(`This run's suite ("${esc(m.suite.id)}") isn't one of the examples. Import its suite.json in step 1, then try again.`, true); return; }
+  let ext;
+  try { ext = extensionPlan(results, suite, { cases: [caseId], repeats }); } catch (e) { say(esc(e.message).replace(/\n/g, '<br>'), true); return; }
+  const env = Object.fromEntries(Object.entries(VENDORS).map(([k, v]) => [v.key, S.keys[k] ?? '']));
+  const opts = { fetchImpl: (...a) => fetch(...a), env, mock: Boolean(m.mock) };
+  const targets = m.targets.map((t) => makeTarget(t, opts));
+  const user = makeTarget(m.user, opts);
+  const judge = makeTarget(m.judge, opts);
+  const missing = [...new Set([...targets, user, judge].filter((t) => !t.ready).map((t) => VENDORS[t.vendor]?.name ?? t.vendor))];
+  if (missing.length) { say(`Add your ${missing.join(' and ')} API key in step 3 first (untick mock models there to see the key fields).`, true); return; }
+  const st = settings();
+  const budget = new Budget({ runCapUsd: st.cap, dailyCapUsd: st.daily, spendStore: m.mock ? null : localSpendStore() });
+  S.budget = budget;
+  S.running = true;
+  update();
+  for (const b of panel.querySelectorAll('button, input')) b.disabled = true;
+  const total = repeats * (m.mode === 'mirrored' ? 2 : m.targets.length);
+  let k = 0;
+  const t0 = Date.now();
+  say(`Extending: conversation 1 of ${total}… <button type="button" class="linkish" id="ext-stop">Stop</button>`);
+  const tick = () => {
+    const left = k > 1 ? ` · ${durationText(((Date.now() - t0) / 1000 / (k - 1)) * (total - k + 1))} left` : '';
+    const line = status.querySelector('.line');
+    const text = `Extending ${esc(caseId)}: conversation ${Math.max(k, 1)} of ${total}${left} · ${budget.calls} model calls · ${usd(budget.spent)} spent`;
+    if (line) line.textContent = text; else status.innerHTML = `<span class="line">${text}</span> · <button type="button" class="linkish" id="ext-stop">Stop</button>`;
+    status.querySelector('#ext-stop')?.addEventListener('click', () => budget.stop('Stopped by you'), { once: true });
+  };
+  const timer = setInterval(tick, 500);
+  if (m.mock) for (const t of [...targets, user, judge]) { const chat = t.chat.bind(t); t.chat = async (req) => { await new Promise((r) => setTimeout(r, 40)); return chat(req); }; }
+  let out;
+  try {
+    const runner = m.mode === 'mirrored' ? runMirrored : runIndependent;
+    out = await runner({ suite, cases: [suite.cases.find((c) => c.id === caseId)], targets, mode: m.mode, user, judge, turns: m.turns, repeats, repeatStart: ext.repeatStart, rubric: Boolean(m.rubric), budget, log: () => { k++; tick(); } });
+  } catch (e) {
+    clearInterval(timer);
+    S.running = false;
+    update();
+    say(`The extension failed: ${esc(e.message)}`, true);
+    for (const b of panel.querySelectorAll('button, input')) b.disabled = false;
+    return;
+  }
+  clearInterval(timer);
+  S.running = false;
+  update();
+  const merged = mergeExtension(results, { cases: [caseId], repeats, conversations: out.conversations, pairs: out.pairs ?? [], budget: budget.summary(), partial: out.partial, stopReason: out.stopReason }, suite);
+  const c = byCase(merged).find((x) => x.case === caseId);
+  const iv = c?.share?.interval;
+  showResult(merged, { from: 'this page (extended; download results.json to keep it)' });
+  const s2 = box.querySelector('#r-extend .ext-status') ?? box.querySelector('#r-extend');
+  const lead = iv && (iv.rate >= 0.5 ? m.targets[0].label : m.targets[1].label);
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  const msg = `${out.partial ? `Stopped early (${esc(out.stopReason)}); kept what finished. ` : ''}Extended "${esc(c ? (m.caseInfo ?? []).find((x) => x.id === caseId)?.title ?? caseId : caseId)}" by ${repeats} repeat${repeats > 1 ? 's' : ''} (${usd(budget.spent)}). ${iv ? `Now ${c.share.n} turns: ${esc(lead)} ${pct(Math.max(iv.rate, 1 - iv.rate))} (95% interval ${pct(iv.rate >= 0.5 ? iv.ci[0] : 1 - iv.ci[1])}–${pct(iv.rate >= 0.5 ? iv.ci[1] : 1 - iv.ci[0])}), <b>${iv.settled ? 'settled' : 'still not settled'}</b>.` : ''} Download results.json to keep it.`;
+  const note = document.createElement('p');
+  note.className = 'ext-done small';
+  note.innerHTML = msg;
+  box.querySelector('#r-extend').prepend(note);
 }
 
 function download(name, text, type) {

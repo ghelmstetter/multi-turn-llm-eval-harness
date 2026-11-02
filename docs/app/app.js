@@ -3,7 +3,7 @@
 import { REPORT_CSS } from '../src/report/styles.js';
 import { popovers } from '../src/report/glossary.js';
 import { mountRate } from './rate.js';
-import { mountRun } from './run.js';
+import { mountRun, openSavedRun } from './run.js';
 import { comparisonSection } from '../src/report/compare-html.js';
 
 // Shared styles first, so app.css can build on them.
@@ -20,9 +20,11 @@ const date = (iso) => { try { return new Date(iso).toLocaleDateString(undefined,
 // Tab order: Run Eval, Blind Rating, Previous Runs. The hashes stay #run, #rate, #explore so old links work.
 const TABS = ['run', 'rate', 'explore'];
 let runMounted = false;
+let lastOpened = null;
 function show() {
   const h = location.hash.slice(1);
-  const tab = h.startsWith('compare') ? 'explore' : h === 'cli' ? 'run' : TABS.includes(h) ? h : 'run';
+  const base = h.split('?')[0];
+  const tab = base === 'compare' ? 'explore' : base === 'cli' ? 'run' : TABS.includes(base) ? base : 'run';
   // #cli opens the command-line instructions over the Run tab, so the link can be shared.
   const dlg = document.getElementById('cli-help');
   if (h === 'cli' && !dlg.open) dlg.showModal();
@@ -30,6 +32,12 @@ function show() {
   showCompare(h.startsWith('compare') ? new URLSearchParams(h.split('?')[1] ?? '') : null);
   // The runner loads its suite and defaults the first time the Run tab is opened.
   if (tab === 'run' && !runMounted) { runMounted = true; mountRun(document.getElementById('run-box')).catch((e) => { document.getElementById('run-box').innerHTML = `<p class="err">Couldn't start the runner: ${esc(e.message)}</p>`; }); }
+  // #run?open=<run id>: open a published run in the runner, to view it and settle its close cases.
+  const openId = base === 'run' ? new URLSearchParams(h.split('?')[1] ?? '').get('open') : null;
+  if (openId && openId !== lastOpened) {
+    const r = RUNS.find((x) => x.id === openId);
+    if (r) { lastOpened = openId; openSavedRun(new URL(r.results, INDEX).href, r.title); }
+  }
   for (const t of TABS) document.getElementById(t).hidden = t !== tab;
   for (const a of document.querySelectorAll('.tabs a')) a.setAttribute('aria-selected', String(a.dataset.tab === tab));
 }
@@ -57,7 +65,7 @@ function runCard(r) {
     <div class="vs">${targets}</div>
     <p class="verdict-line">${verdictText(r.verdict)}</p>
     <p class="stats"><span>${esc(date(r.date))}</span><span>${esc(r.mode)} mode</span><span>${r.cases} cases × ${r.turns} turns${r.repeats > 1 ? ` × ${r.repeats}` : ''}</span><span>${usd(r.costUsd)}${r.calls ? ` · ${r.calls} calls` : ''}</span>${flags ? `<span>${esc(flags)}</span>` : ''}</p>
-    <p class="actions"><a href="${esc(at(r.report))}">Open report</a><a href="${esc(at(r.results))}" download>Download results.json</a><label class="pick"><input type="checkbox" data-compare="${esc(r.id)}"> Compare</label></p>
+    <p class="actions"><a href="${esc(at(r.report))}">Open report</a><a href="${esc(at(r.results))}" download>Download results.json</a><a href="#run?open=${encodeURIComponent(r.id)}">Extend in Run Eval</a><label class="pick"><input type="checkbox" data-compare="${esc(r.id)}"> Compare</label></p>
   </article>`;
 }
 
