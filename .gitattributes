@@ -3,3 +3,5 @@
 *.gz binary
 *.db binary
 *.png binary
+# Windows batch files need Windows line endings.
+*.bat text eol=crlf

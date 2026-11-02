@@ -157,7 +157,7 @@ The demo writes `results/demo/report.html`, a single file that opens in any brow
 
 The harness also has a browser front end, built on the same engine code as the command line, so both always report the same numbers. It runs entirely in the browser, with no server.
 
-- **Explore runs:** every published run, with its verdict, cost and full report. Tick two runs of the same suite to compare them: what changed overall and case by case, and whether each change is more than noise. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm run app` (then http://localhost:8787/app/).
+- **Explore runs:** every published run, with its verdict, cost and full report. Tick two runs of the same suite to compare them: what changed overall and case by case, and whether each change is more than noise. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm start` (then http://localhost:8787/app/), or on Windows by double-clicking `start-app.bat`, which also opens the page.
 - **Rate blind:** pick the better of two anonymized replies (the same pairs the judge saw, names hidden, order shuffled), then see how often the LLM judge agreed with you, overall and by case. Sessions resume where you left off. Export your ratings and add them to a run's report with `report <results.json> --ratings ratings.json --rater "Your name"`.
 - **Run an eval:** [step-by-step command-line instructions](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/#cli) today; running in the browser (edit a suite, use your own API key or free mock models) is planned.
 

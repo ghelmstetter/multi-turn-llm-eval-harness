@@ -75,7 +75,7 @@ async function loadRuns() {
     show();
     mountRate(rate, runs, loadResults);
   } catch (e) {
-    const msg = `<p class="err">Couldn't load the runs: ${esc(e.message)}. If you opened this file directly, start the local server with <code>npm run app</code> instead.</p>`;
+    const msg = `<p class="err">Couldn't load the runs: ${esc(e.message)}. If you opened this file directly, start the local server with <code>npm start</code> (or double-click <code>start-app.bat</code> on Windows) instead.</p>`;
     box.innerHTML = msg;
     rate.innerHTML = msg;
   }
