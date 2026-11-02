@@ -63,7 +63,7 @@ pre.cmd{white-space:pre;overflow-x:auto;font-size:.8rem;margin:4px 0 0}
 
 /* Command-line help */
 .cli-link{margin:14px 0}.cli-link a{color:var(--accent);font-weight:600}
-dialog.cli-help{max-width:760px;width:calc(100% - 32px);max-height:calc(100vh - 48px);border:1px solid var(--axis);border-radius:12px;background:var(--bg);color:var(--fg);padding:8px 22px 20px;box-shadow:0 12px 40px #0006}
+dialog.cli-help{max-width:760px;width:calc(100% - 32px);height:min(820px,calc(100vh - 48px));max-height:none;margin:24px auto;overflow-y:auto;border:1px solid var(--axis);border-radius:12px;background:var(--bg);color:var(--fg);padding:8px 22px 20px;box-shadow:0 12px 40px #0006}
 dialog.cli-help::backdrop{background:#0008}
 .cli-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-8px;background:var(--bg);padding-top:8px;z-index:1}
 .cli-head h2{margin:8px 0}
@@ -72,7 +72,13 @@ button.close{border:0;background:none;font-size:1.1rem;color:var(--fg2);padding:
 .cmdbox{display:flex;align-items:flex-start;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:6px 0}
 .cmdbox code.cmd{flex:1;font-size:.82rem}
 pre.cmd{white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.82rem}
-.cli-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:4px 0 6px;overflow-x:auto;position:sticky;top:44px;background:var(--bg);z-index:1}
-.cli-tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;color:var(--fg2);padding:8px 12px;margin-bottom:-1px;white-space:nowrap;font-weight:500}
-.cli-tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+/* Folder-style tabs: the selected tab joins the panel below it. The baseline is an inset
+   shadow on the row, which tab backgrounds paint over, so nothing overflows (no scroll bar). */
+.cli-tabs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;margin:10px 0 0;padding:0 2px;box-shadow:inset 0 -1px 0 var(--axis);position:sticky;top:44px;background:var(--bg);z-index:1}
+.cli-tabs button{flex:none;border:1px solid var(--line);border-bottom-color:var(--axis);border-radius:8px 8px 0 0;background:var(--card);color:var(--fg2);padding:7px 14px;margin:0;white-space:nowrap;font-weight:500}
+.cli-tabs button:hover{color:var(--fg);border-color:var(--axis)}
+.cli-tabs button[aria-selected="true"]{background:var(--bg);color:var(--fg);border-color:var(--axis);border-bottom-color:var(--bg);border-top:3px solid var(--accent);padding-top:5px}
+.cli-help h3{color:var(--accent)}
 .cli-panel{min-height:300px}.first-time{margin:10px 0 0;color:var(--fg2)}
+.cli-tabs .short{display:none}
+@media (max-width:520px){.cli-tabs .long{display:none}.cli-tabs .short{display:inline}.cli-tabs button{padding-left:10px;padding-right:10px}}

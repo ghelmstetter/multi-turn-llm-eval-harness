@@ -43,7 +43,7 @@
   <dialog id="cli-help" class="cli-help" aria-labelledby="cli-title">
     <div class="cli-head"><h2 id="cli-title">Run an eval from the command line</h2><button type="button" class="close" data-close aria-label="Close">✕</button></div>
     <p class="lead">Everything the web app shows comes from the same engine as these commands. The command line runs any suite, saves the results and writes a self-contained report you can open in any browser.</p>
-    <div class="cli-tabs" role="tablist" aria-label="Command-line help"><button type="button" role="tab" id="cli-tab-setup" aria-controls="cli-setup" data-cli-tab="setup">Set up <span class="muted small">(once)</span></button><button type="button" role="tab" id="cli-tab-run" aria-controls="cli-run" data-cli-tab="run">Run</button><button type="button" role="tab" id="cli-tab-settle" aria-controls="cli-settle" data-cli-tab="settle">Settle and compare</button><button type="button" role="tab" id="cli-tab-suite" aria-controls="cli-suite" data-cli-tab="suite">Your own suite</button></div>
+    <div class="cli-tabs" role="tablist" aria-label="Command-line help"><button type="button" role="tab" id="cli-tab-setup" aria-controls="cli-setup" data-cli-tab="setup">Setup</button><button type="button" role="tab" id="cli-tab-run" aria-controls="cli-run" data-cli-tab="run">Run</button><button type="button" role="tab" id="cli-tab-settle" aria-controls="cli-settle" data-cli-tab="settle"><span class="long">Settle and compare</span><span class="short">Settle</span></button><button type="button" role="tab" id="cli-tab-suite" aria-controls="cli-suite" data-cli-tab="suite"><span class="long">Your own suite</span><span class="short">Your suite</span></button></div>
     <section class="cli-panel" id="cli-setup" role="tabpanel" aria-labelledby="cli-tab-setup" hidden>
     <h3>1. Install</h3>
     <p>You need <a href="https://nodejs.org/">Node.js</a> 20 or later and <a href="https://git-scm.com/">Git</a>. There's nothing else to install: the harness has no dependencies. In a terminal:</p>
@@ -64,7 +64,7 @@ ANTHROPIC_API_KEY=your-key-here</pre>
     <p class="small muted">The file is ignored by Git, so it won't be committed. Never paste keys into chats, issues or screenshots.</p>
     </section>
     <section class="cli-panel" id="cli-run" role="tabpanel" aria-labelledby="cli-tab-run" hidden>
-    <p class="first-time small">First time? Start with <button type="button" class="linkish" data-cli-tab="setup">Set up</button>: install, a free demo and your API key.</p>
+    <p class="first-time small">First time? Start with <button type="button" class="linkish" data-cli-tab="setup">Setup</button>: install, a free demo and your API key.</p>
     <h3>1. Check the cost and time, for free</h3>
     <div class="cmdbox"><code class="cmd">node src/cli.js estimate --suite suites/tutor-es --targets examples/targets.json</code><button type="button" class="copy" data-copy="node src/cli.js estimate --suite suites/tutor-es --targets examples/targets.json">Copy</button></div>
     <p>This shows the estimated cost and time without calling any model. A full run of the tutor suite costs about $1 and takes about half an hour with Gemini Flash.</p>
