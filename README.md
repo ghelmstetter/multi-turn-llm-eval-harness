@@ -159,7 +159,7 @@ The harness also has a browser front end, built on the same engine code as the c
 
 - **Explore runs:** every published run, with its verdict, cost and full report. Tick two runs of the same suite to compare them: what changed overall and case by case, and whether each change is more than noise. [Open it on GitHub Pages](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/), or locally with `npm run app` (then http://localhost:8787/app/).
 - **Rate blind:** pick the better of two anonymized replies (the same pairs the judge saw, names hidden, order shuffled), then see how often the LLM judge agreed with you, overall and by case. Sessions resume where you left off. Export your ratings and add them to a run's report with `report <results.json> --ratings ratings.json --rater "Your name"`.
-- **Run an eval** (planned): edit a suite and run it in the browser, with your own API key or free mock models.
+- **Run an eval:** [step-by-step command-line instructions](https://ghelmstetter.github.io/multi-turn-llm-eval-harness/app/#cli) today; running in the browser (edit a suite, use your own API key or free mock models) is planned.
 
 To add a run to the gallery: `node src/cli.js report <results.json> --publish docs/runs/index.json --title "…"`.
 

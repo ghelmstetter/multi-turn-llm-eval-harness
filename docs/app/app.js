@@ -19,7 +19,11 @@ const date = (iso) => { try { return new Date(iso).toLocaleDateString(undefined,
 const TABS = ['explore', 'rate', 'run'];
 function show() {
   const h = location.hash.slice(1);
-  const tab = h.startsWith('compare') ? 'explore' : TABS.includes(h) ? h : 'explore';
+  const tab = h.startsWith('compare') ? 'explore' : h === 'cli' ? 'run' : TABS.includes(h) ? h : 'explore';
+  // #cli opens the command-line instructions over the Run tab, so the link can be shared.
+  const dlg = document.getElementById('cli-help');
+  if (h === 'cli' && !dlg.open) dlg.showModal();
+  if (h !== 'cli' && dlg.open) dlg.close();
   showCompare(h.startsWith('compare') ? new URLSearchParams(h.split('?')[1] ?? '') : null);
   for (const t of TABS) document.getElementById(t).hidden = t !== tab;
   for (const a of document.querySelectorAll('.tabs a')) a.setAttribute('aria-selected', String(a.dataset.tab === tab));
@@ -139,3 +143,13 @@ async function showCompare(params) {
 }
 
 show();
+
+// Command-line help: closing it (button, Esc or a click outside) goes back to the Run tab.
+{
+  const dlg = document.getElementById('cli-help');
+  dlg.addEventListener('close', () => { if (location.hash === '#cli') history.replaceState(null, '', '#run'); show(); });
+  dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+  for (const b of dlg.querySelectorAll('button.copy[data-copy]')) b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500); } catch { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); }
+  });
+}

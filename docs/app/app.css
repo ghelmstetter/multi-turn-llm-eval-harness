@@ -60,3 +60,15 @@ pre.cmd{white-space:pre;overflow-x:auto;font-size:.8rem;margin:4px 0 0}
 .compare-bar{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:8px 14px;margin:0 0 14px}
 .compare h2{margin-top:6px}
 .back{margin:0 0 10px;font-size:.9rem}.back a{color:var(--accent);text-decoration:none}
+
+/* Command-line help */
+.cli-link{margin:14px 0}.cli-link a{color:var(--accent);font-weight:600}
+dialog.cli-help{max-width:760px;width:calc(100% - 32px);max-height:calc(100vh - 48px);border:1px solid var(--axis);border-radius:12px;background:var(--bg);color:var(--fg);padding:8px 22px 20px;box-shadow:0 12px 40px #0006}
+dialog.cli-help::backdrop{background:#0008}
+.cli-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-8px;background:var(--bg);padding-top:8px;z-index:1}
+.cli-head h2{margin:8px 0}
+button.close{border:0;background:none;font-size:1.1rem;color:var(--fg2);padding:4px 8px}
+.cli-help h3{margin:20px 0 6px}.cli-help p{margin:6px 0}.cli-help a{color:var(--accent)}
+.cmdbox{display:flex;align-items:flex-start;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:6px 0}
+.cmdbox code.cmd{flex:1;font-size:.82rem}
+pre.cmd{white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.82rem}

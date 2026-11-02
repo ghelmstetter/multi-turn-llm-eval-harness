@@ -13,9 +13,8 @@
 //                 current metrics and checks (free: no model calls); with --notes, add an
 //                 analysis section written by you (or an assistant); with --ratings, add blind
 //                 human ratings from the web app (optional --rater name, --rater-role "a teacher");
-//                 with --publish, list the run
-//                 in the web app's gallery index (optional --id, --title, and --home for the
-//                 report's link back to the gallery)
+//                 with --publish, list the run in the web app's gallery index (optional --id,
+//                 --title, and --home for the report's link back to the gallery)
 // Options:
 //   --mode mirrored|independent   (default mirrored)
 //   --compare a,b                 target ids to compare (default: the first two)
